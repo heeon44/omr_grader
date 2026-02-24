@@ -13,6 +13,7 @@ TEMPLATE_DIR = "templates"
 TRASH_DIR = "trash_templates"
 BACKUP_DIR = "template_backups"
 
+# 🔥 Cloud 대비: 시작 시 폴더 강제 생성
 os.makedirs(TEMPLATE_DIR, exist_ok=True)
 os.makedirs(TRASH_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -35,6 +36,8 @@ def backup_template(path, exam_name):
     if not path or not os.path.exists(path):
         return
 
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{exam_name}_{timestamp}.png"
     backup_path = os.path.join(BACKUP_DIR, filename)
@@ -47,6 +50,8 @@ def backup_template(path, exam_name):
 def create_exam_backup_file():
 
     exams = load_exams()
+
+    os.makedirs(BACKUP_DIR, exist_ok=True)
 
     backup_path = os.path.join(BACKUP_DIR, "exams_backup.json")
 
@@ -149,6 +154,7 @@ def show_template_manager():
             backup_template(exam["template_path"], exam_name)
 
             try:
+                os.makedirs(TRASH_DIR, exist_ok=True)
                 filename = os.path.basename(exam["template_path"])
                 trash_path = os.path.join(TRASH_DIR, filename)
                 shutil.move(exam["template_path"], trash_path)
@@ -166,6 +172,7 @@ def show_template_manager():
     # -------------------------------------------------
     st.subheader("♻ 템플릿 복구")
 
+    os.makedirs(TRASH_DIR, exist_ok=True)
     trash_files = os.listdir(TRASH_DIR)
 
     if trash_files:
@@ -173,6 +180,8 @@ def show_template_manager():
         restore_file = st.selectbox("복구할 파일", trash_files)
 
         if st.button("선택 파일 복구"):
+
+            os.makedirs(TEMPLATE_DIR, exist_ok=True)
 
             restore_path = os.path.join(TRASH_DIR, restore_file)
             new_path = os.path.join(TEMPLATE_DIR, restore_file)
@@ -197,6 +206,8 @@ def show_template_manager():
 
         if exam.get("template_path"):
             backup_template(exam["template_path"], exam_name)
+
+        os.makedirs(TEMPLATE_DIR, exist_ok=True)
 
         save_path = os.path.join(TEMPLATE_DIR,
                                  f"{exam_name}.png")
@@ -304,27 +315,23 @@ def show_template_manager():
         debug_img = draw_layout(img,exam.get("layout",{}),exam)
         st.image(debug_img,channels="BGR")
 
-    # =====================================================
-    # 🔥 템플릿 전체 백업 / 복원 기능
-    # =====================================================
+    # -------------------------------------------------
+    # 전체 백업 / 복원
+    # -------------------------------------------------
     st.markdown("---")
     st.subheader("📦 템플릿 전체 백업 / 복원")
 
-    # ZIP 생성
     zip_buffer = io.BytesIO()
-
     exam_backup_file = create_exam_backup_file()
 
     with zipfile.ZipFile(zip_buffer, "w") as z:
 
-        # templates 폴더 포함
         for root, dirs, files in os.walk(TEMPLATE_DIR):
             for file in files:
                 file_path = os.path.join(root, file)
                 z.write(file_path,
                         arcname=os.path.join("templates", file))
 
-        # 시험 데이터 포함
         z.write(exam_backup_file,
                 arcname="exams_backup.json")
 
@@ -335,7 +342,6 @@ def show_template_manager():
         mime="application/zip"
     )
 
-    # 복원
     uploaded_zip = st.file_uploader(
         "📤 ZIP 업로드로 전체 복원",
         type=["zip"]
