@@ -1,7 +1,7 @@
 import streamlit as st
 import cv2
 import numpy as np
-from pdf2image import convert_from_bytes
+import fitz  # 🔥 PyMuPDF
 from core.database import load_exams
 from core.omr_engine import align_images_orb, detect_answer
 
@@ -26,8 +26,30 @@ def show_debug_page():
 
     if uploaded_pdf and st.button("디버그 실행"):
 
-        pages = convert_from_bytes(uploaded_pdf.read(), dpi=200)
+        # -------------------------------------------------
+        # 🔥 PDF → 이미지 변환 (PyMuPDF)
+        # -------------------------------------------------
+        pdf_bytes = uploaded_pdf.read()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
+        pages = []
+
+        for page_index in range(len(doc)):
+            page = doc[page_index]
+            pix = page.get_pixmap(dpi=200)
+
+            img = np.frombuffer(pix.samples, dtype=np.uint8)
+            img = img.reshape(pix.height, pix.width, pix.n)
+
+            # RGBA → RGB 변환
+            if pix.n == 4:
+                img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+
+            pages.append(img)
+
+        # -------------------------------------------------
+        # 템플릿 로딩
+        # -------------------------------------------------
         stream = np.fromfile(exam["template_path"], np.uint8)
         template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
         template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
@@ -36,11 +58,15 @@ def show_debug_page():
         sections = exam.get("sections", {})
         scores = exam.get("scores", {})
 
-        for idx, page in enumerate(pages):
+        # -------------------------------------------------
+        # 페이지별 디버그
+        # -------------------------------------------------
+        for idx, page_img in enumerate(pages):
 
             st.subheader(f"📄 페이지 {idx+1}")
 
-            student_img = cv2.cvtColor(np.array(page), cv2.COLOR_RGB2BGR)
+            # RGB → BGR 변환
+            student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
             aligned = align_images_orb(template_img, student_img)
 
             if aligned is None:
@@ -62,7 +88,7 @@ def show_debug_page():
                     continue
 
                 col_index = ((q - 1) // layout["questions_per_column"]) + 1
-                col_index = str(min(col_index, len(layout["columns_x"])))
+                col_index = str(min(col_index, len(layout["columns_x"])) )
 
                 if col_index not in layout["columns_x"]:
                     continue
@@ -108,7 +134,7 @@ def show_debug_page():
                         if q in sec.get("questions", []):
                             section_scores[sec_id] += scores.get(str(q), 1)
 
-                # 🔴 기본 좌표선 (두께 2)
+                # 🔴 기본 좌표선
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -121,7 +147,7 @@ def show_debug_page():
                         2
                     )
 
-                # 🔵 정답 (채움 + 테두리 5)
+                # 🔵 정답 표시
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -150,7 +176,7 @@ def show_debug_page():
                             5
                         )
 
-                # 🟢 학생 선택 (채움 + 테두리 5)
+                # 🟢 학생 선택 표시
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -193,7 +219,7 @@ def show_debug_page():
                     )
 
             # ============================
-            # 영역 점수 표시 (글씨 확대 + 간격 축소)
+            # 영역 점수 표시
             # ============================
             cols = st.columns(len(section_scores) + 1)
 
