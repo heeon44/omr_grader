@@ -3,6 +3,7 @@ opencv-python-headless
 numpy
 pandas
 openpyxl
-pytesseract
-pdf2image
 Pillow
+pytesseract
+PyMuPDF
+
