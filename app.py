@@ -10,8 +10,8 @@ from views.debug_page import show_debug_page
 # 🔐 비밀번호 설정
 # -----------------------------------
 # 배포 전에는 st.secrets로 바꾸는 걸 추천
-ADMIN_PASSWORD = "admin123"
-USER_PASSWORD = "user123"
+ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
+USER_PASSWORD = st.secrets["USER_PASSWORD"]
 
 
 # -----------------------------------
@@ -117,4 +117,5 @@ elif menu == "답안 채점":
 
 
 elif menu == "디버그 보기":
+
     show_debug_page()
