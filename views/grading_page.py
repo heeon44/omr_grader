@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import io
-from pdf2image import convert_from_bytes
+import fitz  # 🔥 PyMuPDF (Poppler 필요 없음)
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 
@@ -35,8 +35,30 @@ def show_grading_page():
 
         with st.spinner("📄 채점 진행 중..."):
 
-            pages = convert_from_bytes(uploaded_pdf.read(), dpi=200)
+            # -------------------------------------------------
+            # 🔥 PDF → 이미지 변환 (PyMuPDF 방식)
+            # -------------------------------------------------
+            pdf_bytes = uploaded_pdf.read()
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
+            pages = []
+
+            for page_index in range(len(doc)):
+                page = doc[page_index]
+                pix = page.get_pixmap(dpi=200)
+
+                img = np.frombuffer(pix.samples, dtype=np.uint8)
+                img = img.reshape(pix.height, pix.width, pix.n)
+
+                # RGBA → RGB 변환
+                if pix.n == 4:
+                    img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+
+                pages.append(img)
+
+            # -------------------------------------------------
+            # 템플릿 로딩
+            # -------------------------------------------------
             stream = np.fromfile(exam["template_path"], np.uint8)
             template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
             template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
@@ -45,9 +67,14 @@ def show_grading_page():
             results = []
             progress_bar = st.progress(0)
 
-            for idx, page in enumerate(pages):
+            # -------------------------------------------------
+            # 페이지별 채점
+            # -------------------------------------------------
+            for idx, page_img in enumerate(pages):
 
-                student_img = cv2.cvtColor(np.array(page), cv2.COLOR_RGB2BGR)
+                # PyMuPDF는 RGB → BGR 변환
+                student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
+
                 aligned = align_images_orb(template_img, student_img)
 
                 if aligned is None:
