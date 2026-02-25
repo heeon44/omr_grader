@@ -36,7 +36,7 @@ def login():
             st.rerun()
 
         elif password == USER_PASSWORD:
-            st.session_state.role = "user"
+            st.session_state.role = "갈무리"
             st.rerun()
 
         else:
@@ -79,7 +79,7 @@ if st.session_state.role == "admin":
         ]
     )
 
-elif st.session_state.role == "user":
+elif st.session_state.role == "갈무리":
 
     menu = st.sidebar.selectbox(
         "메뉴 선택",
@@ -118,4 +118,5 @@ elif menu == "답안 채점(Excel)":
 elif menu == "답안 채점(이미지)":
 
     show_debug_page()
+
 
