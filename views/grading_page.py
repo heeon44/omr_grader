@@ -14,7 +14,7 @@ from core.scoring import grade_student
 # ==================================================
 def show_grading_page():
 
-    st.header("📝 답안 채점 (PDF)")
+    st.header("📝 답안 채점")
 
     exams = load_exams()
 
@@ -118,3 +118,4 @@ def show_grading_page():
 
         st.success("PDF 채점 완료 ✅")
         st.dataframe(df, use_container_width=True)
+
