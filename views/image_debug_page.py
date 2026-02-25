@@ -157,10 +157,9 @@ def show_image_debug_page():
             aligned_for_detect = aligned
 
             if contrast_mode:
-                if mobile_mode:
-                    aligned_for_detect = enhance_mobile_image(aligned_for_detect)
-                else:
-                    aligned_for_detect = enhance_basic_image(aligned_for_detect)
+                aligned_for_detect = enhance_mobile_image(aligned_for_detect)
+
+            aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
             # 🔥 그레이 변환
             aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
@@ -326,6 +325,7 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
 
