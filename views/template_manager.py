@@ -125,7 +125,7 @@ def show_template_manager():
     exam = exams[exam_name]
 
     # -------------------------------------------------
-    # 🔥 좌표 복사 (layout만 복사)
+    # 🔥 좌표 복사 (완전 확실 적용 버전)
     # -------------------------------------------------
     st.subheader("📋 좌표 복사")
 
@@ -136,13 +136,16 @@ def show_template_manager():
 
         if st.button("이 시험 좌표 복사"):
 
-            target_data = exams[target_exam]
+            # 🔥 최신 JSON 다시 로드
+            latest_exams = load_exams()
 
-            target_data["layout"] = copy.deepcopy(
-                exam.get("layout", {})
+            copied_layout = copy.deepcopy(
+                latest_exams[exam_name].get("layout", {})
             )
 
-            update_exam(target_exam, target_data)
+            latest_exams[target_exam]["layout"] = copied_layout
+
+            update_exam(target_exam, latest_exams[target_exam])
 
             st.success("좌표 복사 완료")
             st.rerun()
