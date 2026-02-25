@@ -4,6 +4,13 @@ from views.exam_manager import show_exam_manager
 from views.template_manager import show_template_manager
 from views.grading_page import show_grading_page
 from views.debug_page import show_debug_page
+from views.image_debug_page import show_image_debug_page
+
+
+# -----------------------------------
+# 🔐 페이지 기본 설정 (최상단 1번만!)
+# -----------------------------------
+st.set_page_config(layout="wide")
 
 
 # -----------------------------------
@@ -24,7 +31,6 @@ def login():
     if st.session_state.role:
         return True
 
-    st.set_page_config(layout="wide")
     st.title("🔐 OMR 채점 프로그램 로그인")
 
     password = st.text_input("비밀번호 입력", type="password")
@@ -45,7 +51,7 @@ def login():
     return False
 
 
-# 로그인 안 되어 있으면 앱 실행 중단
+# 로그인 안 되어 있으면 중단
 if not login():
     st.stop()
 
@@ -53,7 +59,6 @@ if not login():
 # -----------------------------------
 # 메인 화면
 # -----------------------------------
-st.set_page_config(layout="wide")
 st.title("📚 OMR 자동 채점 프로그램")
 
 # 사이드바 권한 표시 + 로그아웃
@@ -74,8 +79,9 @@ if st.session_state.role == "admin":
         [
             "시험 관리",
             "템플릿 관리",
-            "답안 채점(Excel)",
-            "답안 채점(이미지)"
+            "채점 요약(Excel)",
+            "답안 채점(PDF)",
+            "답안 채점(JPG, PNG)"
         ]
     )
 
@@ -84,8 +90,9 @@ elif st.session_state.role == "갈무리":
     menu = st.sidebar.selectbox(
         "메뉴 선택",
         [
-            "답안 채점(Excel)",
-            "답안 채점(이미지)"
+            "채점 요약(Excel)",
+            "답안 채점(PDF)",
+            "답안 채점(JPG, PNG)"
         ]
     )
 
@@ -111,12 +118,15 @@ elif menu == "템플릿 관리":
     show_template_manager()
 
 
-elif menu == "답안 채점(Excel)":
+elif menu == "채점 요약(Excel)":
     show_grading_page()
 
 
-elif menu == "답안 채점(이미지)":
-
+elif menu == "답안 채점(PDF)":
     show_debug_page()
+
+
+elif menu == "답안 채점(JPG, PNG)":
+    show_image_debug_page()
 
 
