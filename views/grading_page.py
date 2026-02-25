@@ -108,7 +108,7 @@ def show_grading_page():
         st.warning("템플릿 설정 필요")
         return
 
-    tab_pdf, tab_img = st.tabs(["📄 PDF 채점", "🖼 JPG/PNG 채점"])
+    tab_pdf, tab_img = st.tabs(["📄 PDF", "🖼 JPG/PNG"])
 
     # ==================================================
     # 📄 PDF 채점
@@ -277,3 +277,4 @@ def show_grading_page():
 
             st.success("이미지 채점 완료 ✅")
             st.dataframe(df, use_container_width=True)
+
