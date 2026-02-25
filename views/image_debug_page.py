@@ -143,20 +143,25 @@ def show_image_debug_page():
             file_array = np.frombuffer(file_bytes, np.uint8)
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-            # 🔥 정렬은 원본으로
-            aligned = align_images_orb(template_img, student_img, layout)
+            # 📱 모바일 정렬 강화 전처리
+            if mobile_mode:
+                student_img = enhance_basic_image(student_img)
 
-            if aligned is None:
-                st.error("ORB 정렬 실패")
-                continue
+            # 🔥 정렬
+            aligned = align_images_orb(template_img, student_img, layout)
 
             # 🔥 반드시 여기에서 생성
             debug_img = aligned.copy()
 
             aligned_for_detect = aligned
 
+            aligned_for_detect = aligned
+
             if contrast_mode:
-                aligned_for_detect = enhance_mobile_image(aligned_for_detect)
+                if mobile_mode:
+                    aligned_for_detect = enhance_mobile_image(aligned_for_detect)
+                else:
+                    aligned_for_detect = enhance_basic_image(aligned_for_detect)
 
             aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
@@ -319,4 +324,5 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
