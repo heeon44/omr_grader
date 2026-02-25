@@ -9,7 +9,6 @@ from views.debug_page import show_debug_page
 # -----------------------------------
 # 🔐 비밀번호 설정
 # -----------------------------------
-# 배포 전에는 st.secrets로 바꾸는 걸 추천
 ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
 USER_PASSWORD = st.secrets["USER_PASSWORD"]
 
@@ -26,7 +25,7 @@ def login():
         return True
 
     st.set_page_config(layout="wide")
-    st.title("🔐 OMR 시스템 로그인")
+    st.title("🔐 OMR 채점 프로그램 로그인")
 
     password = st.text_input("비밀번호 입력", type="password")
 
@@ -55,7 +54,7 @@ if not login():
 # 메인 화면
 # -----------------------------------
 st.set_page_config(layout="wide")
-st.title("📚 OMR 자동 채점 시스템")
+st.title("📚 OMR 자동 채점 프로그램")
 
 # 사이드바 권한 표시 + 로그아웃
 st.sidebar.markdown(f"### 👤 현재 권한: {st.session_state.role}")
@@ -75,8 +74,8 @@ if st.session_state.role == "admin":
         [
             "시험 관리",
             "템플릿 관리",
-            "답안 채점",
-            "디버그 보기"
+            "답안 채점(Excel)",
+            "답안 채점(이미지)"
         ]
     )
 
@@ -85,8 +84,8 @@ elif st.session_state.role == "user":
     menu = st.sidebar.selectbox(
         "메뉴 선택",
         [
-            "답안 채점",
-            "디버그 보기"
+            "답안 채점(Excel)",
+            "답안 채점(이미지)"
         ]
     )
 
@@ -112,10 +111,11 @@ elif menu == "템플릿 관리":
     show_template_manager()
 
 
-elif menu == "답안 채점":
+elif menu == "답안 채점(Excel)":
     show_grading_page()
 
 
-elif menu == "디버그 보기":
+elif menu == "답안 채점(이미지)":
 
     show_debug_page()
+
