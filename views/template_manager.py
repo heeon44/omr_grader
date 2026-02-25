@@ -85,25 +85,26 @@ def draw_layout(image, layout, exam):
             if str(q) not in y_ranges:
                 continue
             y1, y2 = y_ranges[str(q)]
-
             cv2.rectangle(debug_img,
                           (qx1, y1),
                           (qx2, y2),
                           (0,0,255), 2)
 
-    # 🔥 마커 시각화 추가
-    marker_x = layout.get("marker_x")
-    marker_y = layout.get("marker_y")
-    marker_size = layout.get("marker_size")
+    # 🔥 마커 2개 시각화
+    m1 = layout.get("marker1")
+    m2 = layout.get("marker2")
 
-    if marker_x is not None:
-        cv2.rectangle(
-            debug_img,
-            (marker_x, marker_y),
-            (marker_x + marker_size, marker_y + marker_size),
-            (255,0,0),
-            2
-        )
+    if m1:
+        cv2.rectangle(debug_img,
+                      (m1["x1"], m1["y1"]),
+                      (m1["x2"], m1["y2"]),
+                      (255,0,0), 2)
+
+    if m2:
+        cv2.rectangle(debug_img,
+                      (m2["x1"], m2["y1"]),
+                      (m2["x2"], m2["y2"]),
+                      (0,255,255), 2)
 
     return debug_img
 
@@ -254,9 +255,7 @@ def show_template_manager():
     columns_x = {}
 
     for c in range(1, int(num_columns)+1):
-
-        default = layout.get("columns_x",{}).get(str(c),
-                                                 [0,0,0,0,0,0])
+        default = layout.get("columns_x",{}).get(str(c), [0,0,0,0,0,0])
 
         x_input = st.text_input(
             f"{c}열 X 좌표 6개",
@@ -298,23 +297,21 @@ def show_template_manager():
     except:
         question_x_range = default_qx
 
-    # 🔥 마커 설정 추가
-    st.markdown("### 🟦 기준 마커 설정")
+    # 🔥 마커 1
+    st.markdown("### 🟦 기준 마커 1 (x1,y1,x2,y2)")
+    m1_default = layout.get("marker1", {})
+    m1_x1 = st.number_input("마커1 x1", value=m1_default.get("x1", 0))
+    m1_y1 = st.number_input("마커1 y1", value=m1_default.get("y1", 0))
+    m1_x2 = st.number_input("마커1 x2", value=m1_default.get("x2", 50))
+    m1_y2 = st.number_input("마커1 y2", value=m1_default.get("y2", 50))
 
-    marker_x = st.number_input(
-        "마커 X 좌표",
-        value=layout.get("marker_x", 0)
-    )
-
-    marker_y = st.number_input(
-        "마커 Y 좌표",
-        value=layout.get("marker_y", 0)
-    )
-
-    marker_size = st.number_input(
-        "마커 크기",
-        value=layout.get("marker_size", 40)
-    )
+    # 🔥 마커 2
+    st.markdown("### 🟨 기준 마커 2 (x1,y1,x2,y2)")
+    m2_default = layout.get("marker2", {})
+    m2_x1 = st.number_input("마커2 x1", value=m2_default.get("x1", 0))
+    m2_y1 = st.number_input("마커2 y1", value=m2_default.get("y1", 0))
+    m2_x2 = st.number_input("마커2 x2", value=m2_default.get("x2", 50))
+    m2_y2 = st.number_input("마커2 y2", value=m2_default.get("y2", 50))
 
     if st.button("좌표 저장"):
 
@@ -323,9 +320,8 @@ def show_template_manager():
             "columns_x":columns_x,
             "y_ranges":y_ranges,
             "question_x_range":question_x_range,
-            "marker_x":marker_x,
-            "marker_y":marker_y,
-            "marker_size":marker_size
+            "marker1":{"x1":m1_x1,"y1":m1_y1,"x2":m1_x2,"y2":m1_y2},
+            "marker2":{"x1":m2_x1,"y1":m2_y1,"x2":m2_x2,"y2":m2_y2}
         }
 
         update_exam(exam_name,exam)
