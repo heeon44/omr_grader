@@ -1,6 +1,7 @@
 import streamlit as st
 import json
-from core.database import load_exams, add_exam, update_exam, delete_exam
+import copy
+from core.database import load_exams, add_exam, update_exam, delete_exam, save_exams
 
 
 def parse_question_range(text):
@@ -18,6 +19,15 @@ def parse_question_range(text):
             result.append(int(p))
 
     return sorted(list(set(result)))
+
+
+def generate_copy_name(base_name, exams):
+    new_name = f"{base_name}_복사"
+    count = 2
+    while new_name in exams:
+        new_name = f"{base_name}_복사{count}"
+        count += 1
+    return new_name
 
 
 def show_exam_manager():
@@ -43,7 +53,13 @@ def show_exam_manager():
                     st.write(f"문항 수: {exam.get('num_questions')}")
                     st.write(f"영역 수: {len(exam.get('sections', {}))}")
 
-                    col1, col2 = st.columns(2)
+                    new_name = st.text_input(
+                        "새 시험 이름",
+                        value=name,
+                        key=f"rename_input_{name}"
+                    )
+
+                    col1, col2, col3, col4 = st.columns(4)
 
                     if col1.button("수정", key=f"edit_{name}"):
                         st.session_state["edit_exam"] = name
@@ -52,6 +68,29 @@ def show_exam_manager():
                     if col2.button("삭제", key=f"del_{name}"):
                         delete_exam(name)
                         st.rerun()
+
+                    # 🔥 시험 복사 기능
+                    if col3.button("복사", key=f"copy_{name}"):
+
+                        new_copy_name = generate_copy_name(name, exams)
+
+                        copied_exam = copy.deepcopy(exam)
+                        exams[new_copy_name] = copied_exam
+                        save_exams(exams)
+
+                        st.success(f"{new_copy_name} 생성 완료")
+                        st.rerun()
+
+                    # 🔥 이름 변경
+                    if col4.button("이름 변경", key=f"rename_btn_{name}"):
+
+                        if new_name in exams and new_name != name:
+                            st.error("이미 존재하는 시험 이름입니다.")
+                        else:
+                            exams[new_name] = exams.pop(name)
+                            save_exams(exams)
+                            st.success("이름 변경 완료")
+                            st.rerun()
 
     # ==================================================
     # ✏ 시험 등록 / 수정
@@ -63,9 +102,16 @@ def show_exam_manager():
 
         if edit_name:
             st.subheader(f"✏ 시험 수정: {edit_name}")
+
+            new_exam_name = st.text_input(
+                "시험 이름 변경",
+                value=edit_name
+            )
+
             exam_name = edit_name
         else:
             exam_name = st.text_input("시험 이름")
+            new_exam_name = exam_name
 
         num_questions = st.number_input(
             "문항 수",
@@ -133,9 +179,6 @@ def show_exam_manager():
 
             scores[str(q)] = score
 
-        # ==================================================
-        # 📂 영역 설정
-        # ==================================================
         st.markdown("### 📂 영역 설정")
 
         existing_sections = exam_data.get("sections", {})
@@ -190,16 +233,30 @@ def show_exam_manager():
             }
 
             if edit_name:
-                update_exam(edit_name, new_data)
+
+                if new_exam_name != edit_name:
+
+                    if new_exam_name in exams:
+                        st.error("이미 존재하는 시험 이름입니다.")
+                        st.stop()
+
+                    exams[new_exam_name] = new_data
+                    del exams[edit_name]
+                    save_exams(exams)
+
+                else:
+                    update_exam(edit_name, new_data)
+
                 del st.session_state["edit_exam"]
+
             else:
-                add_exam(exam_name, new_data)
+                add_exam(new_exam_name, new_data)
 
             st.success("저장 완료")
             st.rerun()
 
     # ==================================================
-    # 🔥 백업 / 복원 기능 (추가 기능)
+    # 🔥 백업 / 복원 기능
     # ==================================================
 
     st.markdown("---")
@@ -207,7 +264,6 @@ def show_exam_manager():
 
     exams = load_exams()
 
-    # 📥 백업 다운로드
     backup_json = json.dumps(exams, ensure_ascii=False, indent=2)
 
     st.download_button(
@@ -217,7 +273,6 @@ def show_exam_manager():
         mime="application/json"
     )
 
-    # 📤 복원 업로드
     uploaded_backup = st.file_uploader(
         "📤 시험자료 JSON 업로드로 복원",
         type=["json"]
@@ -226,7 +281,6 @@ def show_exam_manager():
     if uploaded_backup is not None:
         try:
             data = json.load(uploaded_backup)
-            from core.database import save_exams
             save_exams(data)
             st.success("시험자료 복원 완료")
             st.rerun()
