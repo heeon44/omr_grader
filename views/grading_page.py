@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import io
-import fitz
+import fitz  # PyMuPDF
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 
@@ -12,9 +12,9 @@ from core.omr_engine import align_images_orb, detect_answer
 from core.scoring import grade_student
 
 
-# -------------------------------------------------
-# 📱 외곽선 기반 자동 기울기 보정
-# -------------------------------------------------
+# ==================================================
+# 📱 자동 외곽선 기반 기울기 보정
+# ==================================================
 def auto_deskew(image):
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -38,7 +38,6 @@ def auto_deskew(image):
         return image
 
     pts = approx.reshape(4, 2)
-
     rect = np.zeros((4, 2), dtype="float32")
 
     s = pts.sum(axis=1)
@@ -72,9 +71,9 @@ def auto_deskew(image):
     return warped
 
 
-# -------------------------------------------------
+# ==================================================
 # 📱 모바일 대비 강화
-# -------------------------------------------------
+# ==================================================
 def enhance_mobile_image(img):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -89,9 +88,9 @@ def enhance_mobile_image(img):
     return enhanced
 
 
-# -------------------------------------------------
-# 메인 채점 페이지
-# -------------------------------------------------
+# ==================================================
+# 📝 채점 페이지
+# ==================================================
 def show_grading_page():
 
     st.header("📝 답안 채점")
@@ -109,16 +108,20 @@ def show_grading_page():
         st.warning("템플릿 설정 필요")
         return
 
-    tab1, tab2 = st.tabs(["📄 PDF 채점", "📱 이미지 채점(초안정)"])
+    tab_pdf, tab_img = st.tabs(["📄 PDF 채점", "🖼 JPG/PNG 채점"])
 
     # ==================================================
-    # 📄 PDF 채점 (기존 그대로)
+    # 📄 PDF 채점
     # ==================================================
-    with tab1:
+    with tab_pdf:
 
-        uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
+        uploaded_pdf = st.file_uploader(
+            "PDF 업로드",
+            type=["pdf"],
+            key="pdf_uploader"
+        )
 
-        if uploaded_pdf and st.button("채점 시작 (PDF)"):
+        if uploaded_pdf and st.button("채점 시작 (PDF)", key="pdf_btn"):
 
             with st.spinner("📄 채점 진행 중..."):
 
@@ -196,29 +199,31 @@ def show_grading_page():
                     progress_bar.progress((idx + 1) / len(pages))
 
             df = pd.DataFrame(results)
-            st.success("채점 완료 ✅")
+
+            st.success("PDF 채점 완료 ✅")
             st.dataframe(df, use_container_width=True)
 
     # ==================================================
-    # 📱 이미지 채점 (초안정)
+    # 🖼 이미지 채점
     # ==================================================
-    with tab2:
+    with tab_img:
 
         uploaded_img = st.file_uploader(
-            "핸드폰 촬영 이미지 업로드",
-            type=["jpg", "jpeg", "png"]
+            "JPG / PNG 이미지 업로드",
+            type=["jpg", "jpeg", "png"],
+            key="img_uploader"
         )
 
-        if uploaded_img and st.button("채점 시작 (이미지)"):
+        if uploaded_img and st.button("채점 시작 (이미지)", key="img_btn"):
 
             file_bytes = uploaded_img.read()
             file_array = np.frombuffer(file_bytes, np.uint8)
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-            # 🔥 1단계: 외곽선 기울기 보정
+            # 1️⃣ 자동 기울기 보정
             student_img = auto_deskew(student_img)
 
-            # 🔥 2단계: 대비 강화
+            # 2️⃣ 대비 강화
             student_img = enhance_mobile_image(student_img)
 
             stream = np.fromfile(exam["template_path"], np.uint8)
@@ -269,5 +274,6 @@ def show_grading_page():
             row = grade_student(row, exam)
 
             df = pd.DataFrame([row])
+
             st.success("이미지 채점 완료 ✅")
             st.dataframe(df, use_container_width=True)
