@@ -13,7 +13,6 @@ TEMPLATE_DIR = "templates"
 TRASH_DIR = "trash_templates"
 BACKUP_DIR = "template_backups"
 
-# 🔥 Cloud 대비: 시작 시 폴더 강제 생성
 os.makedirs(TEMPLATE_DIR, exist_ok=True)
 os.makedirs(TRASH_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -35,7 +34,6 @@ def load_image_safe(path):
 def backup_template(path, exam_name):
     if not path or not os.path.exists(path):
         return
-
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{exam_name}_{timestamp}.png"
     backup_path = os.path.join(BACKUP_DIR, filename)
@@ -48,10 +46,8 @@ def backup_template(path, exam_name):
 def create_exam_backup_file():
     exams = load_exams()
     backup_path = os.path.join(BACKUP_DIR, "exams_backup.json")
-
     with open(backup_path, "w", encoding="utf-8") as f:
         json.dump(exams, f, indent=4, ensure_ascii=False)
-
     return backup_path
 
 
@@ -70,7 +66,6 @@ def draw_layout(image, layout, exam):
             if str(q) not in y_ranges:
                 continue
             y1, y2 = y_ranges[str(q)]
-
             for i in range(5):
                 if i + 1 >= len(x_list):
                     continue
@@ -90,7 +85,7 @@ def draw_layout(image, layout, exam):
                           (qx2, y2),
                           (0,0,255), 2)
 
-    # 🔥 마커 2개 시각화
+    # 마커 표시
     m1 = layout.get("marker1")
     m2 = layout.get("marker2")
 
@@ -143,11 +138,9 @@ def show_template_manager():
         target_exam = st.selectbox("복사 대상 시험", other_exams)
 
         if st.button("이 시험 템플릿 복사"):
-
             target_data = exams[target_exam]
             target_data["layout"] = exam.get("layout", {})
             target_data["template_path"] = exam.get("template_path", "")
-
             update_exam(target_exam, target_data)
             st.success("복사 완료")
 
@@ -183,11 +176,9 @@ def show_template_manager():
     trash_files = os.listdir(TRASH_DIR)
 
     if trash_files:
-
         restore_file = st.selectbox("복구할 파일", trash_files)
 
         if st.button("선택 파일 복구"):
-
             restore_path = os.path.join(TRASH_DIR, restore_file)
             new_path = os.path.join(TEMPLATE_DIR, restore_file)
 
@@ -234,11 +225,15 @@ def show_template_manager():
         st.image(img, channels="BGR")
 
     # -------------------------------------------------
-    # 좌표 설정
+    # 좌표 설정 (저장 버튼 눌러야 반영)
     # -------------------------------------------------
     st.subheader("📐 좌표 설정")
 
-    layout = exam.get("layout", {})
+    if st.session_state.get("current_exam") != exam_name:
+        st.session_state.current_exam = exam_name
+        st.session_state.edit_layout = exam.get("layout", {}).copy()
+
+    layout = st.session_state.edit_layout
 
     questions_per_column = st.number_input(
         "한 열당 문항 수",
@@ -271,7 +266,6 @@ def show_template_manager():
     y_ranges = {}
 
     for q in range(1, exam["num_questions"]+1):
-
         default_y = layout.get("y_ranges",{}).get(str(q),[0,0])
 
         y_input = st.text_input(
@@ -297,7 +291,7 @@ def show_template_manager():
     except:
         question_x_range = default_qx
 
-    # 🔥 마커 1
+    # 마커1
     st.markdown("### 🟦 기준 마커 1 (x1,y1,x2,y2)")
     m1_default = layout.get("marker1", {})
     m1_x1 = st.number_input("마커1 x1", value=m1_default.get("x1", 0))
@@ -305,7 +299,7 @@ def show_template_manager():
     m1_x2 = st.number_input("마커1 x2", value=m1_default.get("x2", 50))
     m1_y2 = st.number_input("마커1 y2", value=m1_default.get("y2", 50))
 
-    # 🔥 마커 2
+    # 마커2
     st.markdown("### 🟨 기준 마커 2 (x1,y1,x2,y2)")
     m2_default = layout.get("marker2", {})
     m2_x1 = st.number_input("마커2 x1", value=m2_default.get("x1", 0))
@@ -315,7 +309,7 @@ def show_template_manager():
 
     if st.button("좌표 저장"):
 
-        exam["layout"] = {
+        new_layout = {
             "questions_per_column":questions_per_column,
             "columns_x":columns_x,
             "y_ranges":y_ranges,
@@ -324,15 +318,18 @@ def show_template_manager():
             "marker2":{"x1":m2_x1,"y1":m2_y1,"x2":m2_x2,"y2":m2_y2}
         }
 
-        update_exam(exam_name,exam)
+        exam["layout"] = new_layout
+        update_exam(exam_name, exam)
+
+        st.session_state.edit_layout = new_layout.copy()
 
         st.success("좌표 저장 완료")
         st.rerun()
 
     if img is not None:
         st.subheader("📊 좌표 시각화")
-        debug_img = draw_layout(img,exam.get("layout",{}),exam)
-        st.image(debug_img,channels="BGR")
+        debug_img = draw_layout(img, layout, exam)
+        st.image(debug_img, channels="BGR")
 
     # -------------------------------------------------
     # 전체 백업 / 복원
@@ -374,7 +371,6 @@ def show_template_manager():
             backup_json_path = "exams_backup.json"
 
             if os.path.exists(backup_json_path):
-
                 with open(backup_json_path,
                           "r",
                           encoding="utf-8") as f:
