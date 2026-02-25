@@ -69,11 +69,9 @@ def show_exam_manager():
                         delete_exam(name)
                         st.rerun()
 
-                    # 🔥 시험 복사 기능
                     if col3.button("복사", key=f"copy_{name}"):
 
                         new_copy_name = generate_copy_name(name, exams)
-
                         copied_exam = copy.deepcopy(exam)
                         exams[new_copy_name] = copied_exam
                         save_exams(exams)
@@ -81,7 +79,6 @@ def show_exam_manager():
                         st.success(f"{new_copy_name} 생성 완료")
                         st.rerun()
 
-                    # 🔥 이름 변경
                     if col4.button("이름 변경", key=f"rename_btn_{name}"):
 
                         if new_name in exams and new_name != name:
@@ -129,17 +126,11 @@ def show_exam_manager():
             raw_data = exam_data.get("answers", {}).get(str(q), {})
 
             if isinstance(raw_data, list):
-                default_data = {
-                    "type": "mcq",
-                    "answer": raw_data
-                }
+                default_data = {"type": "mcq", "answer": raw_data}
             elif isinstance(raw_data, dict):
                 default_data = raw_data
             else:
-                default_data = {
-                    "type": "mcq",
-                    "answer": []
-                }
+                default_data = {"type": "mcq", "answer": []}
 
             col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -147,7 +138,7 @@ def show_exam_manager():
                 f"{q}번 유형",
                 ["mcq", "short"],
                 index=0 if default_data.get("type", "mcq") == "mcq" else 1,
-                key=f"type_{q}"
+                key=f"{exam_name}_type_{q}"
             )
 
             if q_type == "mcq":
@@ -158,13 +149,13 @@ def show_exam_manager():
             ans_input = col2.text_input(
                 f"{q}번 정답",
                 value=default_ans,
-                key=f"ans_{q}"
+                key=f"{exam_name}_ans_{q}"
             )
 
             score = col3.number_input(
                 f"{q}번 배점",
                 value=exam_data.get("scores", {}).get(str(q), 1),
-                key=f"score_{q}"
+                key=f"{exam_name}_score_{q}"
             )
 
             if q_type == "mcq":
@@ -172,11 +163,7 @@ def show_exam_manager():
             else:
                 answer_value = ans_input.strip()
 
-            answers[str(q)] = {
-                "type": q_type,
-                "answer": answer_value
-            }
-
+            answers[str(q)] = {"type": q_type, "answer": answer_value}
             scores[str(q)] = score
 
         st.markdown("### 📂 영역 설정")
@@ -200,7 +187,7 @@ def show_exam_manager():
             sec_name = st.text_input(
                 f"{i}번 영역 이름",
                 value=default_sec.get("name", ""),
-                key=f"secname_{i}"
+                key=f"{exam_name}_secname_{i}"
             )
 
             default_range = ""
@@ -210,7 +197,7 @@ def show_exam_manager():
             sec_q = st.text_input(
                 f"{i}번 영역 문항 범위 (예: 1-5,7,9)",
                 value=default_range,
-                key=f"secq_{i}"
+                key=f"{exam_name}_secq_{i}"
             )
 
             sections[str(i)] = {
@@ -247,6 +234,11 @@ def show_exam_manager():
                 else:
                     update_exam(edit_name, new_data)
 
+                # 🔥 session_state 초기화
+                for key in list(st.session_state.keys()):
+                    if key.startswith(f"{exam_name}_"):
+                        del st.session_state[key]
+
                 del st.session_state["edit_exam"]
 
             else:
@@ -256,7 +248,7 @@ def show_exam_manager():
             st.rerun()
 
     # ==================================================
-    # 🔥 백업 / 복원 기능
+    # 📦 백업 / 복원
     # ==================================================
 
     st.markdown("---")
