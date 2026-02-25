@@ -151,7 +151,10 @@ def show_image_debug_page():
                 continue
 
             # 🔥 디버그용 이미지 생성
-            debug_img = aligned.copy()
+            if contrast_mode:
+                debug_img = aligned_for_detect.copy()
+            else:
+                debug_img = aligned.copy()
 
             # 🔥 인식용 이미지 생성
             aligned_for_detect = aligned
@@ -325,6 +328,7 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
 
