@@ -113,7 +113,8 @@ def show_image_debug_page():
         st.warning("템플릿 설정 필요")
         return
 
-    mobile_mode = st.checkbox("📱 모바일 촬영 안정화 모드 사용", value=True)
+    mobile_mode = st.checkbox("📱 모바일 정렬 강화 모드", value=True)
+    contrast_mode = st.checkbox("🎛 명암 대비 강화 적용", value=False)
 
     uploaded_imgs = st.file_uploader(
         "JPG / PNG 여러 장 업로드",
@@ -152,10 +153,10 @@ def show_image_debug_page():
             # 🔥 반드시 여기에서 생성
             debug_img = aligned.copy()
 
-            if mobile_mode:
-                aligned_for_detect = enhance_mobile_image(aligned)
-            else:
-                aligned_for_detect = aligned
+            aligned_for_detect = aligned
+
+            if contrast_mode:
+                aligned_for_detect = enhance_mobile_image(aligned_for_detect)
 
             aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
@@ -318,3 +319,4 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
