@@ -1,6 +1,8 @@
 import streamlit as st
 import cv2
 import numpy as np
+import pandas as pd
+import io
 
 from core.database import load_exams
 from core.omr_engine import align_images_orb, detect_answer
@@ -60,13 +62,11 @@ def auto_deskew(image):
     ], dtype="float32")
 
     M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
-
-    return warped
+    return cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
 
 # ==================================================
-# 📱 모바일 대비 강화
+# 📱 대비 강화
 # ==================================================
 def enhance_mobile_image(img):
 
@@ -86,7 +86,6 @@ def show_image_debug_page():
     st.header("🖼 답안 채점 (이미지 디버그)")
 
     exams = load_exams()
-
     if not exams:
         st.warning("시험 먼저 등록하세요.")
         return
@@ -115,6 +114,8 @@ def show_image_debug_page():
         sections = exam.get("sections", {})
         scores = exam.get("scores", {})
 
+        all_rows = []
+
         for idx, uploaded_img in enumerate(uploaded_imgs):
 
             st.markdown("---")
@@ -124,13 +125,9 @@ def show_image_debug_page():
             file_array = np.frombuffer(file_bytes, np.uint8)
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-            # 1️⃣ 자동 기울기 보정
             student_img = auto_deskew(student_img)
-
-            # 2️⃣ 대비 강화
             student_img = enhance_mobile_image(student_img)
 
-            # ORB 정렬
             aligned = align_images_orb(template_img, student_img, layout)
 
             if aligned is None:
@@ -142,9 +139,10 @@ def show_image_debug_page():
 
             total_score = 0
             section_scores = {sec_id: 0 for sec_id in sections}
+            row = {"이미지 번호": idx + 1}
 
             # ==================================================
-            # 🔎 문항 루프
+            # 문항 루프
             # ==================================================
             for q in range(1, exam["num_questions"] + 1):
 
@@ -172,13 +170,13 @@ def show_image_debug_page():
                     expected
                 )
 
+                row[f"{q}번_학생답"] = ",".join(selected)
                 is_correct = set(correct) == set(selected)
 
-                # ❌ 오답 문항 빨간 오버레이
+                # 오답 문항 빨간 오버레이
                 if not is_correct:
                     qx_ranges = layout.get("question_x_ranges", {})
                     qx = qx_ranges.get(col_index)
-
                     if qx:
                         overlay = debug_img.copy()
                         cv2.rectangle(
@@ -193,14 +191,14 @@ def show_image_debug_page():
                             debug_img, 0.75, 0
                         )
 
-                # ✅ 점수 계산
+                # 점수 계산
                 if is_correct:
                     total_score += scores.get(str(q), 1)
                     for sec_id, sec in sections.items():
                         if q in sec.get("questions", []):
                             section_scores[sec_id] += scores.get(str(q), 1)
 
-                # 🔲 버블 테두리
+                # 버블 테두리
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -212,80 +210,75 @@ def show_image_debug_page():
                         2
                     )
 
-                # 🔵 정답 표시
+                # 정답 (굵게 파랑)
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
-
                     bubble_id = str(i + 1)
-
                     if bubble_id in correct:
-                        overlay = debug_img.copy()
                         cv2.rectangle(
-                            overlay,
+                            debug_img,
                             (x_bounds[i], y1),
                             (x_bounds[i + 1], y2),
                             (255, 0, 0),
-                            -1
-                        )
-                        debug_img = cv2.addWeighted(
-                            overlay, 0.25,
-                            debug_img, 0.75, 0
+                            5
                         )
 
-                # 🟢 학생 선택 표시
+                # 학생 선택 (굵게 초록)
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
-
                     bubble_id = str(i + 1)
-
                     if bubble_id in selected:
-                        overlay = debug_img.copy()
                         cv2.rectangle(
-                            overlay,
+                            debug_img,
                             (x_bounds[i], y1),
                             (x_bounds[i + 1], y2),
                             (0, 255, 0),
-                            -1
-                        )
-                        debug_img = cv2.addWeighted(
-                            overlay, 0.35,
-                            debug_img, 0.65, 0
+                            5
                         )
 
-            # ==================================================
-            # 📊 점수 출력
-            # ==================================================
+                # Q번호 표시
+                qx_ranges = layout.get("question_x_ranges", {})
+                qx = qx_ranges.get(col_index)
+                if qx:
+                    cv2.putText(
+                        debug_img,
+                        f"Q{q}",
+                        (qx[0], y1 - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (0, 0, 255),
+                        2
+                    )
+
+            row["총점"] = total_score
+            all_rows.append(row)
+
+            # 섹션 점수 표시
             cols = st.columns(len(section_scores) + 1)
-
             i = 0
             for sec_id, score_val in section_scores.items():
-                sec_name = sections[sec_id]["name"]
-
-                cols[i].markdown(
-                    f"""
-                    <div style="text-align:center;">
-                        <div style="font-size:26px;">{sec_name}</div>
-                        <div style="font-size:40px; font-weight:bold;">
-                            {score_val}점
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                cols[i].markdown(f"### {sections[sec_id]['name']}<br><b>{score_val}점</b>",
+                                 unsafe_allow_html=True)
                 i += 1
 
-            cols[i].markdown(
-                f"""
-                <div style="text-align:center;">
-                    <div style="font-size:28px;">총점</div>
-                    <div style="font-size:46px; font-weight:bold; color:#2E8B57;">
-                        {total_score}점
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            cols[i].markdown(f"### 총점<br><b style='color:#2E8B57;'>{total_score}점</b>",
+                             unsafe_allow_html=True)
 
             st.image(debug_img, channels="BGR")
+
+        # ==================================================
+        # 📊 엑셀 저장
+        # ==================================================
+        df = pd.DataFrame(all_rows)
+
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False)
+
+        st.download_button(
+            "📥 전체 결과 엑셀 다운로드",
+            data=excel_buffer.getvalue(),
+            file_name="image_debug_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
