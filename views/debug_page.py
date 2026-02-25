@@ -332,37 +332,34 @@ def show_debug_page():
 
             st.image(debug_img, channels="BGR")
 
-            # ==================================
-            # 🖼 이미지 디버그 추가 부분
-            # ==================================
-            with tab_img:
+    # ==================================
+    # 🖼 이미지 디버그 추가
+    # ==================================
+    with tab_img:
 
-                uploaded_img = st.file_uploader(
-                    "JPG / PNG 업로드",
-                    type=["jpg", "jpeg", "png"],
-                    key="debug_img"
-                )
+        uploaded_img = st.file_uploader(
+            "JPG / PNG 업로드",
+            type=["jpg", "jpeg", "png"],
+            key="debug_img"
+        )
 
-                if uploaded_img and st.button("채점 시작 (이미지)"):
+        if uploaded_img and st.button("채점 시작 (이미지)"):
 
-                    file_bytes = uploaded_img.read()
-                    file_array = np.frombuffer(file_bytes, np.uint8)
-                    student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
+            file_bytes = uploaded_img.read()
+            file_array = np.frombuffer(file_bytes, np.uint8)
+            student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-                    # 🔥 자동 보정
-                    student_img = auto_deskew(student_img)
-                    student_img = enhance_mobile_image(student_img)
+            student_img = auto_deskew(student_img)
+            student_img = enhance_mobile_image(student_img)
 
-                    stream = np.fromfile(exam["template_path"], np.uint8)
-                    template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
+            stream = np.fromfile(exam["template_path"], np.uint8)
+            template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
 
-                    aligned = align_images_orb(template_img, student_img, layout)
+            aligned = align_images_orb(template_img, student_img, layout)
 
-                    if aligned is None:
-                        st.error("ORB 정렬 실패")
-                        return
+            if aligned is None:
+                st.error("ORB 정렬 실패")
+                return
 
-                    st.success("정렬 성공")
-                    st.image(aligned, channels="BGR")
-
-
+            st.success("정렬 성공")
+            st.image(aligned, channels="BGR")
