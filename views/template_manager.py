@@ -49,8 +49,11 @@ def backup_template(path, exam_name):
 # 시험 + 좌표 전체 백업 JSON 생성
 # -------------------------------------------------
 def create_exam_backup_file():
+
     exams = load_exams()
+
     os.makedirs(BACKUP_DIR, exist_ok=True)
+
     backup_path = os.path.join(BACKUP_DIR, "exams_backup.json")
 
     with open(backup_path, "w", encoding="utf-8") as f:
@@ -63,6 +66,7 @@ def create_exam_backup_file():
 # 좌표 시각화
 # -------------------------------------------------
 def draw_layout(image, layout, exam):
+
     debug_img = image.copy()
     columns_x = layout.get("columns_x", {})
     y_ranges = layout.get("y_ranges", {})
@@ -121,7 +125,7 @@ def show_template_manager():
     exam = exams[exam_name]
 
     # -------------------------------------------------
-    # 🔥 좌표 복사 (현재 시험에 즉시 반영)
+    # 🔥 좌표 복사 (session_state 초기화 방식)
     # -------------------------------------------------
     st.subheader("📋 좌표 복사")
 
@@ -137,6 +141,7 @@ def show_template_manager():
         if st.button("선택한 시험 좌표 복사"):
 
             latest_exams = load_exams()
+
             copied_layout = copy.deepcopy(
                 latest_exams[source_exam].get("layout", {})
             )
@@ -145,17 +150,12 @@ def show_template_manager():
             latest_exams[exam_name]["layout"] = copied_layout
             update_exam(exam_name, latest_exams[exam_name])
 
-            # 🔥 세션 state 강제 업데이트
-            for c, x_list in copied_layout.get("columns_x", {}).items():
-                st.session_state[f"x_{exam_name}_{c}"] = ",".join(map(str, x_list))
-
-            for q, y_range in copied_layout.get("y_ranges", {}).items():
-                st.session_state[f"y_{exam_name}_{q}"] = ",".join(map(str, y_range))
-
-            if "question_x_range" in copied_layout:
-                st.session_state[f"qx_{exam_name}"] = ",".join(
-                    map(str, copied_layout["question_x_range"])
-                )
+            # 🔥 핵심: 현재 시험 관련 input 세션 상태 삭제
+            for key in list(st.session_state.keys()):
+                if key.startswith(f"x_{exam_name}_") or \
+                   key.startswith(f"y_{exam_name}_") or \
+                   key == f"qx_{exam_name}":
+                    del st.session_state[key]
 
             st.success("좌표 복사 완료")
             st.rerun()
@@ -189,6 +189,7 @@ def show_template_manager():
     # -------------------------------------------------
     st.subheader("♻ 템플릿 복구")
 
+    os.makedirs(TRASH_DIR, exist_ok=True)
     trash_files = os.listdir(TRASH_DIR)
 
     if trash_files:
@@ -196,6 +197,8 @@ def show_template_manager():
         restore_file = st.selectbox("복구할 파일", trash_files)
 
         if st.button("선택 파일 복구"):
+
+            os.makedirs(TEMPLATE_DIR, exist_ok=True)
 
             restore_path = os.path.join(TRASH_DIR, restore_file)
             new_path = os.path.join(TEMPLATE_DIR, restore_file)
@@ -220,6 +223,8 @@ def show_template_manager():
 
         if exam.get("template_path"):
             backup_template(exam["template_path"], exam_name)
+
+        os.makedirs(TEMPLATE_DIR, exist_ok=True)
 
         save_path = os.path.join(TEMPLATE_DIR,
                                  f"{exam_name}.png")
@@ -265,7 +270,8 @@ def show_template_manager():
 
     for c in range(1, int(num_columns)+1):
 
-        default = layout.get("columns_x",{}).get(str(c), [0,0,0,0,0,0])
+        default = layout.get("columns_x",{}).get(str(c),
+                                                 [0,0,0,0,0,0])
 
         x_input = st.text_input(
             f"{c}열 X 좌표 6개",
