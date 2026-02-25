@@ -13,6 +13,7 @@ TEMPLATE_DIR = "templates"
 TRASH_DIR = "trash_templates"
 BACKUP_DIR = "template_backups"
 
+# 🔥 Cloud 대비: 시작 시 폴더 강제 생성
 os.makedirs(TEMPLATE_DIR, exist_ok=True)
 os.makedirs(TRASH_DIR, exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -34,6 +35,7 @@ def load_image_safe(path):
 def backup_template(path, exam_name):
     if not path or not os.path.exists(path):
         return
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{exam_name}_{timestamp}.png"
     backup_path = os.path.join(BACKUP_DIR, filename)
@@ -46,8 +48,10 @@ def backup_template(path, exam_name):
 def create_exam_backup_file():
     exams = load_exams()
     backup_path = os.path.join(BACKUP_DIR, "exams_backup.json")
+
     with open(backup_path, "w", encoding="utf-8") as f:
         json.dump(exams, f, indent=4, ensure_ascii=False)
+
     return backup_path
 
 
@@ -66,6 +70,7 @@ def draw_layout(image, layout, exam):
             if str(q) not in y_ranges:
                 continue
             y1, y2 = y_ranges[str(q)]
+
             for i in range(5):
                 if i + 1 >= len(x_list):
                     continue
@@ -85,7 +90,7 @@ def draw_layout(image, layout, exam):
                           (qx2, y2),
                           (0,0,255), 2)
 
-    # 마커 표시
+    # 🔥 마커 표시
     m1 = layout.get("marker1")
     m2 = layout.get("marker2")
 
@@ -181,12 +186,9 @@ def show_template_manager():
         if st.button("선택 파일 복구"):
             restore_path = os.path.join(TRASH_DIR, restore_file)
             new_path = os.path.join(TEMPLATE_DIR, restore_file)
-
             shutil.move(restore_path, new_path)
-
             exam["template_path"] = new_path
             update_exam(exam_name, exam)
-
             st.success("복구 완료")
             st.rerun()
 
@@ -248,44 +250,36 @@ def show_template_manager():
     )
 
     columns_x = {}
-
     for c in range(1, int(num_columns)+1):
         default = layout.get("columns_x",{}).get(str(c), [0,0,0,0,0,0])
-
         x_input = st.text_input(
             f"{c}열 X 좌표 6개",
             value=",".join(map(str, default)),
             key=f"x_{c}"
         )
-
         try:
             columns_x[str(c)] = list(map(int,x_input.split(",")))
         except:
             columns_x[str(c)] = default
 
     y_ranges = {}
-
     for q in range(1, exam["num_questions"]+1):
         default_y = layout.get("y_ranges",{}).get(str(q),[0,0])
-
         y_input = st.text_input(
             f"{q}번 Y 범위",
             value=",".join(map(str, default_y)),
             key=f"y_{q}"
         )
-
         try:
             y_ranges[str(q)] = list(map(int,y_input.split(",")))
         except:
             y_ranges[str(q)] = default_y
 
     default_qx = layout.get("question_x_range",[0,0])
-
     qx_input = st.text_input(
         "문항 공통 X 범위 (x1,x2)",
         value=",".join(map(str, default_qx))
     )
-
     try:
         question_x_range = list(map(int,qx_input.split(",")))
     except:
@@ -376,8 +370,12 @@ def show_template_manager():
                           encoding="utf-8") as f:
                     restored_exams = json.load(f)
 
-                for name, data in restored_exams.items():
-                    update_exam(name, data)
+                from core.database import save_exams
+                save_exams(restored_exams)
+
+                exams = load_exams()
+                if exam_name in exams:
+                    st.session_state.edit_layout = exams[exam_name].get("layout", {}).copy()
 
                 os.remove(backup_json_path)
 
