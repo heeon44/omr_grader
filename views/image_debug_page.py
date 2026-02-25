@@ -150,23 +150,19 @@ def show_image_debug_page():
                 st.error("ORB 정렬 실패")
                 continue
 
-            # 🔥 디버그용 이미지 생성
-            if contrast_mode:
-                debug_img = aligned_for_detect.copy()
-            else:
-                debug_img = aligned.copy()
-
             # 🔥 인식용 이미지 생성
             aligned_for_detect = aligned
 
             if contrast_mode:
                 aligned_for_detect = enhance_mobile_image(aligned_for_detect)
 
-            aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
+            # 🔥 디버그용 이미지 생성 (여기!)
+            if contrast_mode:
+                debug_img = aligned_for_detect.copy()
+            else:
+                debug_img = aligned.copy()
 
             # 🔥 그레이 변환
-            aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
-
             aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
             total_score = 0
@@ -328,6 +324,7 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
 
