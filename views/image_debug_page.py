@@ -143,12 +143,10 @@ def show_image_debug_page():
             file_array = np.frombuffer(file_bytes, np.uint8)
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-            # 📱 모바일 정렬 강화 전처리
-            if mobile_mode:
-                student_img = enhance_basic_image(student_img)
+            aligned_for_detect = aligned
 
-            # 🔥 정렬
-            aligned = align_images_orb(template_img, student_img, layout)
+            if contrast_mode:
+                aligned_for_detect = enhance_basic_image(aligned_for_detect)
 
             # 🔥 반드시 여기에서 생성
             debug_img = aligned.copy()
@@ -324,5 +322,6 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
