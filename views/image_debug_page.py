@@ -105,7 +105,6 @@ def show_image_debug_page():
 
     if uploaded_imgs and st.button("채점 시작"):
 
-        # 템플릿 로드
         stream = np.fromfile(exam["template_path"], np.uint8)
         template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
         template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
@@ -141,9 +140,6 @@ def show_image_debug_page():
             section_scores = {sec_id: 0 for sec_id in sections}
             row = {"이미지 번호": idx + 1}
 
-            # ==================================================
-            # 문항 루프
-            # ==================================================
             for q in range(1, exam["num_questions"] + 1):
 
                 if str(q) not in layout.get("y_ranges", {}):
@@ -173,7 +169,7 @@ def show_image_debug_page():
                 row[f"{q}번_학생답"] = ",".join(selected)
                 is_correct = set(correct) == set(selected)
 
-                # 오답 문항 빨간 오버레이
+                # 🔴 오답 문항 빨간 반투명
                 if not is_correct:
                     qx_ranges = layout.get("question_x_ranges", {})
                     qx = qx_ranges.get(col_index)
@@ -187,8 +183,8 @@ def show_image_debug_page():
                             -1
                         )
                         debug_img = cv2.addWeighted(
-                            overlay, 0.25,
-                            debug_img, 0.75, 0
+                            overlay, 0.45,
+                            debug_img, 0.55, 0
                         )
 
                 # 점수 계산
@@ -198,7 +194,7 @@ def show_image_debug_page():
                         if q in sec.get("questions", []):
                             section_scores[sec_id] += scores.get(str(q), 1)
 
-                # 버블 테두리
+                # 🔲 기본 테두리
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -210,12 +206,24 @@ def show_image_debug_page():
                         2
                     )
 
-                # 정답 (굵게 파랑)
+                # 🔵 정답 (반투명 + 굵은 테두리)
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
                     bubble_id = str(i + 1)
                     if bubble_id in correct:
+                        overlay = debug_img.copy()
+                        cv2.rectangle(
+                            overlay,
+                            (x_bounds[i], y1),
+                            (x_bounds[i + 1], y2),
+                            (255, 0, 0),
+                            -1
+                        )
+                        debug_img = cv2.addWeighted(
+                            overlay, 0.25,
+                            debug_img, 0.75, 0
+                        )
                         cv2.rectangle(
                             debug_img,
                             (x_bounds[i], y1),
@@ -224,12 +232,24 @@ def show_image_debug_page():
                             5
                         )
 
-                # 학생 선택 (굵게 초록)
+                # 🟢 학생 선택 (반투명 + 굵은 테두리)
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
                     bubble_id = str(i + 1)
                     if bubble_id in selected:
+                        overlay = debug_img.copy()
+                        cv2.rectangle(
+                            overlay,
+                            (x_bounds[i], y1),
+                            (x_bounds[i + 1], y2),
+                            (0, 255, 0),
+                            -1
+                        )
+                        debug_img = cv2.addWeighted(
+                            overlay, 0.35,
+                            debug_img, 0.65, 0
+                        )
                         cv2.rectangle(
                             debug_img,
                             (x_bounds[i], y1),
@@ -238,7 +258,7 @@ def show_image_debug_page():
                             5
                         )
 
-                # Q번호 표시
+                # Q 번호 표시
                 qx_ranges = layout.get("question_x_ranges", {})
                 qx = qx_ranges.get(col_index)
                 if qx:
@@ -255,24 +275,25 @@ def show_image_debug_page():
             row["총점"] = total_score
             all_rows.append(row)
 
-            # 섹션 점수 표시
+            # 점수 표시
             cols = st.columns(len(section_scores) + 1)
             i = 0
             for sec_id, score_val in section_scores.items():
-                cols[i].markdown(f"### {sections[sec_id]['name']}<br><b>{score_val}점</b>",
-                                 unsafe_allow_html=True)
+                cols[i].markdown(
+                    f"### {sections[sec_id]['name']}<br><b>{score_val}점</b>",
+                    unsafe_allow_html=True
+                )
                 i += 1
 
-            cols[i].markdown(f"### 총점<br><b style='color:#2E8B57;'>{total_score}점</b>",
-                             unsafe_allow_html=True)
+            cols[i].markdown(
+                f"### 총점<br><b style='color:#2E8B57;'>{total_score}점</b>",
+                unsafe_allow_html=True
+            )
 
             st.image(debug_img, channels="BGR")
 
-        # ==================================================
         # 📊 엑셀 저장
-        # ==================================================
         df = pd.DataFrame(all_rows)
-
         excel_buffer = io.BytesIO()
         df.to_excel(excel_buffer, index=False)
 
