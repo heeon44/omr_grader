@@ -8,7 +8,7 @@ from core.omr_engine import align_images_orb, detect_answer
 
 def show_debug_page():
 
-    st.header("🔍 디버그 보기")
+    st.header("🔍 이미지 보기")
 
     exams = load_exams()
     if not exams:
@@ -24,7 +24,7 @@ def show_debug_page():
 
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
-    if uploaded_pdf and st.button("디버그 실행"):
+    if uploaded_pdf and st.button("채점하기"):
 
         # -------------------------------------------------
         # 🔥 PDF → 이미지 변환 (PyMuPDF)
@@ -257,3 +257,4 @@ def show_debug_page():
             )
 
             st.image(debug_img, channels="BGR")
+
