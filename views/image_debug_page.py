@@ -143,16 +143,17 @@ def show_image_debug_page():
             file_array = np.frombuffer(file_bytes, np.uint8)
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-            aligned_for_detect = aligned
+            # 🔥 정렬 먼저
+            aligned = align_images_orb(template_img, student_img, layout)
 
-            if contrast_mode:
-                aligned_for_detect = enhance_basic_image(aligned_for_detect)
+            if aligned is None:
+                st.error("ORB 정렬 실패")
+                continue
 
-            # 🔥 반드시 여기에서 생성
+            # 🔥 디버그용 이미지 생성
             debug_img = aligned.copy()
 
-            aligned_for_detect = aligned
-
+            # 🔥 인식용 이미지 생성
             aligned_for_detect = aligned
 
             if contrast_mode:
@@ -160,6 +161,9 @@ def show_image_debug_page():
                     aligned_for_detect = enhance_mobile_image(aligned_for_detect)
                 else:
                     aligned_for_detect = enhance_basic_image(aligned_for_detect)
+
+            # 🔥 그레이 변환
+            aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
             aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
@@ -322,6 +326,7 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
 
