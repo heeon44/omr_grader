@@ -6,6 +6,7 @@ import shutil
 import zipfile
 import io
 import json
+import copy
 from datetime import datetime
 from core.database import load_exams, update_exam
 
@@ -124,23 +125,27 @@ def show_template_manager():
     exam = exams[exam_name]
 
     # -------------------------------------------------
-    # 템플릿 복사
+    # 🔥 좌표 복사 (layout만 복사)
     # -------------------------------------------------
-    st.subheader("📋 템플릿 복사")
+    st.subheader("📋 좌표 복사")
 
     other_exams = [e for e in exams.keys() if e != exam_name]
 
     if other_exams:
         target_exam = st.selectbox("복사 대상 시험", other_exams)
 
-        if st.button("이 시험 템플릿 복사"):
+        if st.button("이 시험 좌표 복사"):
 
             target_data = exams[target_exam]
-            target_data["layout"] = exam.get("layout", {})
-            target_data["template_path"] = exam.get("template_path", "")
+
+            target_data["layout"] = copy.deepcopy(
+                exam.get("layout", {})
+            )
 
             update_exam(target_exam, target_data)
-            st.success("복사 완료")
+
+            st.success("좌표 복사 완료")
+            st.rerun()
 
     # -------------------------------------------------
     # 삭제
