@@ -46,7 +46,7 @@ def draw_layout(image, layout, exam):
     debug_img = image.copy()
     columns_x = layout.get("columns_x", {})
     y_ranges = layout.get("y_ranges", {})
-    q_x_range = layout.get("question_x_ranges", {})
+    q_x_ranges = layout.get("question_x_ranges", {})
 
     for col_id, x_list in columns_x.items():
         for q in range(1, exam["num_questions"] + 1):
@@ -243,8 +243,11 @@ def show_template_manager():
         num_columns = st.number_input(
             "열 개수",
             min_value=1,
-            value=len(layout.get("columns_x", {})) or 1
+            value=layout.get("num_columns", len(layout.get("columns_x", {})) or 1),
+            key=f"{edit_name}_num_columns"
         )
+
+        num_columns = int(num_columns)
 
         columns_x = {}
         for c in range(1, int(num_columns)+1):
@@ -276,18 +279,22 @@ def show_template_manager():
 
         for c in range(1, int(num_columns) + 1):
 
-            default_qx = layout.get("question_x_ranges", {}).get(str(c), [0,0])
+            question_x_ranges = {}
 
-            qx_input = st.text_input(
-                f"{c}열 문항 번호 X 범위 (x1,x2)",
-                value=",".join(map(str, default_qx)),
-                key=f"{edit_name}_qx_{c}"
-            )
+            for c in range(1, num_columns + 1):
 
-            try:
-                question_x_ranges[str(c)] = list(map(int, qx_input.split(",")))
-            except:
-                question_x_ranges[str(c)] = default_qx
+                default_qx = layout.get("question_x_ranges", {}).get(str(c), [0,0])
+
+                qx_input = st.text_input(
+                    f"{c}열 문항 번호 X 범위 (x1,x2)",
+                    value=",".join(map(str, default_qx)),
+                    key=f"{edit_name}_qx_{c}"
+                )
+
+                try:
+                    question_x_ranges[str(c)] = list(map(int, qx_input.split(",")))
+                except:
+                    question_x_ranges[str(c)] = default_qx
 
         st.markdown("### 🟦 기준 마커 1 (x1,y1,x2,y2)")
         m1 = layout.get("marker1", {})
@@ -331,7 +338,8 @@ def show_template_manager():
                 "questions_per_column":questions_per_column,
                 "columns_x":columns_x,
                 "y_ranges":y_ranges,
-                "question_x_ranges":question_x_ranges,
+                "num_columns": num_columns,
+                "question_x_ranges": question_x_ranges,
                 "marker1":{"x1":m1_x1,"y1":m1_y1,"x2":m1_x2,"y2":m1_y2},
                 "marker2":{"x1":m2_x1,"y1":m2_y1,"x2":m2_x2,"y2":m2_y2}
             }
@@ -419,5 +427,6 @@ def show_template_manager():
 
             except Exception as e:
                 st.error(f"복원 실패: {e}")
+
 
 
