@@ -67,7 +67,7 @@ def show_debug_page():
 
             # RGB → BGR 변환
             student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
-            aligned = align_images_orb(template_img, student_img)
+            aligned = align_images_orb(template_img, student_img, layout)
 
             if aligned is None:
                 st.error("ORB 정렬 실패")
@@ -257,5 +257,6 @@ def show_debug_page():
             )
 
             st.image(debug_img, channels="BGR")
+
 
 
