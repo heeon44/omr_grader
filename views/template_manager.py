@@ -46,7 +46,7 @@ def draw_layout(image, layout, exam):
     debug_img = image.copy()
     columns_x = layout.get("columns_x", {})
     y_ranges = layout.get("y_ranges", {})
-    q_x_range = layout.get("question_x_range")
+    q_x_range = layout.get("question_x_ranges", {})
 
     for col_id, x_list in columns_x.items():
         for q in range(1, exam["num_questions"] + 1):
@@ -58,21 +58,34 @@ def draw_layout(image, layout, exam):
                     continue
                 cv2.rectangle(debug_img,(x_list[i], y1),(x_list[i+1], y2),(0,255,0),1)
 
-    if q_x_range:
-        qx1, qx2 = q_x_range
+   for col_id, q_range in q_x_ranges.items():
+
+      if not q_range:
+            continue
+
+        qx1, qx2 = q_range
+
         for q in range(1, exam["num_questions"] + 1):
+
+            # 이 문항이 몇 열인지 계산
+            col_index = ((q - 1) // layout.get("questions_per_column", 1)) + 1
+
+            if str(col_index) != col_id:
+                continue
+
             if str(q) not in y_ranges:
                 continue
+
             y1, y2 = y_ranges[str(q)]
             cv2.rectangle(debug_img,(qx1,y1),(qx2,y2),(0,0,255),2)
 
-    m1 = layout.get("marker1")
-    m2 = layout.get("marker2")
+        m1 = layout.get("marker1")
+        m2 = layout.get("marker2")
 
-    if m1:
-        cv2.rectangle(debug_img,(m1["x1"],m1["y1"]),(m1["x2"],m1["y2"]),(255,0,0),2)
-    if m2:
-        cv2.rectangle(debug_img,(m2["x1"],m2["y1"]),(m2["x2"],m2["y2"]),(0,255,255),2)
+      if m1:
+         cv2.rectangle(debug_img,(m1["x1"],m1["y1"]),(m1["x2"],m1["y2"]),(255,0,0),2)
+      if m2:
+         cv2.rectangle(debug_img,(m2["x1"],m2["y1"]),(m2["x2"],m2["y2"]),(0,255,255),2)
 
     return debug_img
 
@@ -259,16 +272,22 @@ def show_template_manager():
             except:
                 y_ranges[str(q)] = default_y
 
-        default_qx = layout.get("question_x_range",[0,0])
-        qx_input = st.text_input(
-            "문항 공통 X 범위 (x1,x2)",
-            value=",".join(map(str, default_qx)),
-            key=f"{edit_name}_qx"
-        )
-        try:
-            question_x_range = list(map(int,qx_input.split(",")))
-        except:
-            question_x_range = default_qx
+        question_x_ranges = {}
+
+        for c in range(1, int(num_columns) + 1):
+
+            default_qx = layout.get("question_x_ranges", {}).get(str(c), [0,0])
+
+            qx_input = st.text_input(
+                f"{c}열 문항 번호 X 범위 (x1,x2)",
+                value=",".join(map(str, default_qx)),
+                key=f"{edit_name}_qx_{c}"
+            )
+
+            try:
+                question_x_ranges[str(c)] = list(map(int, qx_input.split(",")))
+            except:
+                question_x_ranges[str(c)] = default_qx
 
         st.markdown("### 🟦 기준 마커 1 (x1,y1,x2,y2)")
         m1 = layout.get("marker1", {})
@@ -312,7 +331,7 @@ def show_template_manager():
                 "questions_per_column":questions_per_column,
                 "columns_x":columns_x,
                 "y_ranges":y_ranges,
-                "question_x_range":question_x_range,
+                "question_x_ranges":question_x_ranges,
                 "marker1":{"x1":m1_x1,"y1":m1_y1,"x2":m1_x2,"y2":m1_y2},
                 "marker2":{"x1":m2_x1,"y1":m2_y1,"x2":m2_x2,"y2":m2_y2}
             }
@@ -400,4 +419,5 @@ def show_template_manager():
 
             except Exception as e:
                 st.error(f"복원 실패: {e}")
+
 
