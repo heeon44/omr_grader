@@ -125,7 +125,7 @@ def show_template_manager():
     exam = exams[exam_name]
 
     # -------------------------------------------------
-    # 🔥 좌표 복사 (완전 확실 적용 버전)
+    # 🔥 좌표 복사
     # -------------------------------------------------
     st.subheader("📋 좌표 복사")
 
@@ -136,7 +136,6 @@ def show_template_manager():
 
         if st.button("이 시험 좌표 복사"):
 
-            # 🔥 최신 JSON 다시 로드
             latest_exams = load_exams()
 
             copied_layout = copy.deepcopy(
@@ -267,7 +266,7 @@ def show_template_manager():
         x_input = st.text_input(
             f"{c}열 X 좌표 6개",
             value=",".join(map(str, default)),
-            key=f"x_{c}"
+            key=f"x_{exam_name}_{c}"
         )
 
         try:
@@ -284,7 +283,7 @@ def show_template_manager():
         y_input = st.text_input(
             f"{q}번 Y 범위",
             value=",".join(map(str, default_y)),
-            key=f"y_{q}"
+            key=f"y_{exam_name}_{q}"
         )
 
         try:
@@ -296,7 +295,8 @@ def show_template_manager():
 
     qx_input = st.text_input(
         "문항 공통 X 범위 (x1,x2)",
-        value=",".join(map(str, default_qx))
+        value=",".join(map(str, default_qx)),
+        key=f"qx_{exam_name}"
     )
 
     try:
@@ -306,14 +306,16 @@ def show_template_manager():
 
     if st.button("좌표 저장"):
 
-        exam["layout"] = {
+        latest_exams = load_exams()
+
+        latest_exams[exam_name]["layout"] = {
             "questions_per_column":questions_per_column,
             "columns_x":columns_x,
             "y_ranges":y_ranges,
             "question_x_range":question_x_range
         }
 
-        update_exam(exam_name,exam)
+        update_exam(exam_name,latest_exams[exam_name])
 
         st.success("좌표 저장 완료")
         st.rerun()
