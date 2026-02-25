@@ -236,8 +236,11 @@ def show_template_manager():
         columns_x = {}
         for c in range(1, int(num_columns)+1):
             default = layout.get("columns_x",{}).get(str(c), [0,0,0,0,0,0])
-            x_input = st.text_input(f"{c}열 X 좌표 6개",
-                                    value=",".join(map(str, default)))
+            x_input = st.text_input(
+                f"{c}열 X 좌표 6개",
+                value=",".join(map(str, default)),
+                key=f"{edit_name}_x_{c}"
+            )
             try:
                 columns_x[str(c)] = list(map(int,x_input.split(",")))
             except:
@@ -246,16 +249,22 @@ def show_template_manager():
         y_ranges = {}
         for q in range(1, exam["num_questions"]+1):
             default_y = layout.get("y_ranges",{}).get(str(q),[0,0])
-            y_input = st.text_input(f"{q}번 Y 범위",
-                                    value=",".join(map(str, default_y)))
+            y_input = st.text_input(
+                f"{q}번 Y 범위",
+                value=",".join(map(str, default_y)),
+                key=f"{edit_name}_y_{q}"
+            )
             try:
                 y_ranges[str(q)] = list(map(int,y_input.split(",")))
             except:
                 y_ranges[str(q)] = default_y
 
         default_qx = layout.get("question_x_range",[0,0])
-        qx_input = st.text_input("문항 공통 X 범위 (x1,x2)",
-                                 value=",".join(map(str, default_qx)))
+        qx_input = st.text_input(
+            "문항 공통 X 범위 (x1,x2)",
+            value=",".join(map(str, default_qx)),
+            key=f"{edit_name}_qx"
+        )
         try:
             question_x_range = list(map(int,qx_input.split(",")))
         except:
@@ -263,17 +272,39 @@ def show_template_manager():
 
         st.markdown("### 🟦 기준 마커 1 (x1,y1,x2,y2)")
         m1 = layout.get("marker1", {})
-        m1_x1 = st.number_input("마커1 x1", value=m1.get("x1",0))
-        m1_y1 = st.number_input("마커1 y1", value=m1.get("y1",0))
-        m1_x2 = st.number_input("마커1 x2", value=m1.get("x2",50))
-        m1_y2 = st.number_input("마커1 y2", value=m1.get("y2",50))
+        m1_x1 = st.number_input("마커1 x1",
+                                value=m1.get("x1",0),
+                                key=f"{edit_name}_m1_x1")
+
+        m1_y1 = st.number_input("마커1 y1",
+                                value=m1.get("y1",0),
+                                key=f"{edit_name}_m1_y1")
+
+        m1_x2 = st.number_input("마커1 x2",
+                                value=m1.get("x2",50),
+                                key=f"{edit_name}_m1_x2")
+
+        m1_y2 = st.number_input("마커1 y2",
+                                value=m1.get("y2",50),
+                                key=f"{edit_name}_m1_y2")
 
         st.markdown("### 🟨 기준 마커 2 (x1,y1,x2,y2)")
         m2 = layout.get("marker2", {})
-        m2_x1 = st.number_input("마커2 x1", value=m2.get("x1",0))
-        m2_y1 = st.number_input("마커2 y1", value=m2.get("y1",0))
-        m2_x2 = st.number_input("마커2 x2", value=m2.get("x2",50))
-        m2_y2 = st.number_input("마커2 y2", value=m2.get("y2",50))
+        m2_x1 = st.number_input("마커2 x1",
+                                value=m2.get("x1",0),
+                                key=f"{edit_name}_m2_x1")
+
+        m2_y1 = st.number_input("마커2 y1",
+                                value=m2.get("y1",0),
+                                key=f"{edit_name}_m2_y1")
+
+        m2_x2 = st.number_input("마커2 x2",
+                                value=m2.get("x2",50),
+                                key=f"{edit_name}_m2_x2")
+
+        m2_y2 = st.number_input("마커2 y2",
+                                value=m2.get("y2",50),
+                                key=f"{edit_name}_m2_y2")
 
         if st.button("💾 저장하기"):
 
@@ -287,6 +318,12 @@ def show_template_manager():
             }
 
             update_exam(edit_name, exam)
+
+            # 🔥 해당 시험 위젯 state 전부 정리
+            for key in list(st.session_state.keys()):
+                if key.startswith(f"{edit_name}_"):
+                    del st.session_state[key]
+
             st.success("저장 완료")
             st.rerun()
 
@@ -363,3 +400,4 @@ def show_template_manager():
 
             except Exception as e:
                 st.error(f"복원 실패: {e}")
+
