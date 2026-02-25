@@ -67,9 +67,9 @@ def auto_deskew(image):
 
 
 # ==================================================
-# 📱 대비 강화
+# 📱 기본 대비 강화 (이름만 변경)
 # ==================================================
-def enhance_mobile_image(img):
+def enhance_basic_image(img):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
@@ -77,6 +77,7 @@ def enhance_mobile_image(img):
     blur = cv2.GaussianBlur(cl, (5, 5), 0)
 
     return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
+
 
 # ==================================================
 # 📱 모바일 대비 강화 (인식용)
@@ -91,6 +92,7 @@ def enhance_mobile_image(img):
     blur = cv2.GaussianBlur(cl, (3, 3), 0)
 
     return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
+
 
 # ==================================================
 # 🖼 이미지 디버그 페이지
@@ -140,14 +142,15 @@ def show_image_debug_page():
             file_array = np.frombuffer(file_bytes, np.uint8)
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
-            # student_img = auto_deskew(student_img)
-            student_img = enhance_mobile_image(student_img)
-
+            # 🔥 정렬은 원본으로
             aligned = align_images_orb(template_img, student_img, layout)
 
             if aligned is None:
                 st.error("ORB 정렬 실패")
                 continue
+
+            # 🔥 반드시 여기에서 생성
+            debug_img = aligned.copy()
 
             if mobile_mode:
                 aligned_for_detect = enhance_mobile_image(aligned)
@@ -189,7 +192,6 @@ def show_image_debug_page():
                 row[f"{q}번_학생답"] = ",".join(selected)
                 is_correct = set(correct) == set(selected)
 
-                # 🔴 오답 문항 빨간 반투명
                 if not is_correct:
                     qx_ranges = layout.get("question_x_ranges", {})
                     qx = qx_ranges.get(col_index)
@@ -207,14 +209,12 @@ def show_image_debug_page():
                             debug_img, 0.55, 0
                         )
 
-                # 점수 계산
                 if is_correct:
                     total_score += scores.get(str(q), 1)
                     for sec_id, sec in sections.items():
                         if q in sec.get("questions", []):
                             section_scores[sec_id] += scores.get(str(q), 1)
 
-                # 🔲 기본 테두리
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -226,7 +226,6 @@ def show_image_debug_page():
                         2
                     )
 
-                # 🔵 정답 (반투명 + 굵은 테두리)
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -252,7 +251,6 @@ def show_image_debug_page():
                             5
                         )
 
-                # 🟢 학생 선택 (반투명 + 굵은 테두리)
                 for i in range(5):
                     if i + 1 >= len(x_bounds):
                         continue
@@ -278,7 +276,6 @@ def show_image_debug_page():
                             5
                         )
 
-                # Q 번호 표시
                 qx_ranges = layout.get("question_x_ranges", {})
                 qx = qx_ranges.get(col_index)
                 if qx:
@@ -295,7 +292,6 @@ def show_image_debug_page():
             row["총점"] = total_score
             all_rows.append(row)
 
-            # 점수 표시
             cols = st.columns(len(section_scores) + 1)
             i = 0
             for sec_id, score_val in section_scores.items():
@@ -312,7 +308,6 @@ def show_image_debug_page():
 
             st.image(debug_img, channels="BGR")
 
-        # 📊 엑셀 저장
         df = pd.DataFrame(all_rows)
         excel_buffer = io.BytesIO()
         df.to_excel(excel_buffer, index=False)
@@ -323,6 +318,3 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-
-
