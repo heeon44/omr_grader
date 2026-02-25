@@ -6,7 +6,6 @@ import shutil
 import zipfile
 import io
 import json
-import copy
 from datetime import datetime
 from core.database import load_exams, update_exam
 
@@ -125,43 +124,26 @@ def show_template_manager():
     exam = exams[exam_name]
 
     # -------------------------------------------------
-    # 🔥 좌표 복사 (session_state 초기화 방식)
+    # 템플릿 복사
     # -------------------------------------------------
-    st.subheader("📋 좌표 복사")
+    st.subheader("📋 템플릿 복사")
 
     other_exams = [e for e in exams.keys() if e != exam_name]
 
     if other_exams:
-        source_exam = st.selectbox(
-            "복사할 시험 선택",
-            other_exams,
-            key=f"copy_source_{exam_name}"
-        )
+        target_exam = st.selectbox("복사 대상 시험", other_exams)
 
-        if st.button("선택한 시험 좌표 복사"):
+        if st.button("이 시험 템플릿 복사"):
 
-            latest_exams = load_exams()
+            target_data = exams[target_exam]
+            target_data["layout"] = exam.get("layout", {})
+            target_data["template_path"] = exam.get("template_path", "")
 
-            copied_layout = copy.deepcopy(
-                latest_exams[source_exam].get("layout", {})
-            )
-
-            # JSON 반영
-            latest_exams[exam_name]["layout"] = copied_layout
-            update_exam(exam_name, latest_exams[exam_name])
-
-            # 🔥 핵심: 현재 시험 관련 input 세션 상태 삭제
-            for key in list(st.session_state.keys()):
-                if key.startswith(f"x_{exam_name}_") or \
-                   key.startswith(f"y_{exam_name}_") or \
-                   key == f"qx_{exam_name}":
-                    del st.session_state[key]
-
-            st.success("좌표 복사 완료")
-            st.rerun()
+            update_exam(target_exam, target_data)
+            st.success("복사 완료")
 
     # -------------------------------------------------
-    # ❌ 템플릿 삭제
+    # 삭제
     # -------------------------------------------------
     st.subheader("❌ 템플릿 삭제")
 
@@ -172,6 +154,7 @@ def show_template_manager():
             backup_template(exam["template_path"], exam_name)
 
             try:
+                os.makedirs(TRASH_DIR, exist_ok=True)
                 filename = os.path.basename(exam["template_path"])
                 trash_path = os.path.join(TRASH_DIR, filename)
                 shutil.move(exam["template_path"], trash_path)
@@ -185,7 +168,7 @@ def show_template_manager():
             st.rerun()
 
     # -------------------------------------------------
-    # ♻ 템플릿 복구
+    # 복구
     # -------------------------------------------------
     st.subheader("♻ 템플릿 복구")
 
@@ -212,7 +195,7 @@ def show_template_manager():
             st.rerun()
 
     # -------------------------------------------------
-    # 📤 템플릿 업로드
+    # 업로드
     # -------------------------------------------------
     st.subheader("📤 템플릿 업로드")
 
@@ -248,7 +231,7 @@ def show_template_manager():
         st.image(img, channels="BGR")
 
     # -------------------------------------------------
-    # 📐 좌표 설정
+    # 좌표 설정
     # -------------------------------------------------
     st.subheader("📐 좌표 설정")
 
@@ -276,7 +259,7 @@ def show_template_manager():
         x_input = st.text_input(
             f"{c}열 X 좌표 6개",
             value=",".join(map(str, default)),
-            key=f"x_{exam_name}_{c}"
+            key=f"x_{c}"
         )
 
         try:
@@ -293,7 +276,7 @@ def show_template_manager():
         y_input = st.text_input(
             f"{q}번 Y 범위",
             value=",".join(map(str, default_y)),
-            key=f"y_{exam_name}_{q}"
+            key=f"y_{q}"
         )
 
         try:
@@ -305,8 +288,7 @@ def show_template_manager():
 
     qx_input = st.text_input(
         "문항 공통 X 범위 (x1,x2)",
-        value=",".join(map(str, default_qx)),
-        key=f"qx_{exam_name}"
+        value=",".join(map(str, default_qx))
     )
 
     try:
@@ -316,16 +298,14 @@ def show_template_manager():
 
     if st.button("좌표 저장"):
 
-        latest_exams = load_exams()
-
-        latest_exams[exam_name]["layout"] = {
+        exam["layout"] = {
             "questions_per_column":questions_per_column,
             "columns_x":columns_x,
             "y_ranges":y_ranges,
             "question_x_range":question_x_range
         }
 
-        update_exam(exam_name,latest_exams[exam_name])
+        update_exam(exam_name,exam)
 
         st.success("좌표 저장 완료")
         st.rerun()
@@ -336,7 +316,7 @@ def show_template_manager():
         st.image(debug_img,channels="BGR")
 
     # -------------------------------------------------
-    # 📦 전체 백업 / 복원
+    # 전체 백업 / 복원
     # -------------------------------------------------
     st.markdown("---")
     st.subheader("📦 템플릿 전체 백업 / 복원")
