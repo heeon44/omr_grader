@@ -1,5 +1,3 @@
-아 됐고 디버그도 있구나...........ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ 디버그도 수정해보자... 
-
 import streamlit as st
 import cv2
 import numpy as np
@@ -354,3 +352,4 @@ def show_debug_page():
 
             st.success("정렬 성공")
             st.image(aligned, channels="BGR")
+
