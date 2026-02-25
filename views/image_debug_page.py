@@ -125,7 +125,7 @@ def show_image_debug_page():
             student_img = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
 
             # student_img = auto_deskew(student_img)
-            # student_img = enhance_mobile_image(student_img)
+            student_img = enhance_mobile_image(student_img)
 
             aligned = align_images_orb(template_img, student_img, layout)
 
@@ -303,4 +303,5 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
