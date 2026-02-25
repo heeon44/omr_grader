@@ -2,7 +2,37 @@ import cv2
 import numpy as np
 
 
-def align_images_orb(template_img, student_img):
+def enhance_marker_region(img, layout):
+    marker_x = layout.get("marker_x")
+    marker_y = layout.get("marker_y")
+    marker_size = layout.get("marker_size", 40)
+
+    if marker_x is None:
+        return img
+
+    img_copy = img.copy()
+
+    roi = img_copy[
+        marker_y:marker_y+marker_size,
+        marker_x:marker_x+marker_size
+    ]
+
+    roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    roi_eq = cv2.equalizeHist(roi_gray)
+    roi_eq = cv2.cvtColor(roi_eq, cv2.COLOR_GRAY2BGR)
+
+    img_copy[
+        marker_y:marker_y+marker_size,
+        marker_x:marker_x+marker_size
+    ] = roi_eq
+
+    return img_copy
+
+
+def align_images_orb(template_img, student_img, layout):
+
+    template_img = enhance_marker_region(template_img, layout)
+    student_img = enhance_marker_region(student_img, layout)
 
     template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
     student_gray = cv2.cvtColor(student_img, cv2.COLOR_BGR2GRAY)
