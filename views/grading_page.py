@@ -75,7 +75,7 @@ def show_grading_page():
                 # PyMuPDF는 RGB → BGR 변환
                 student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
 
-                aligned = align_images_orb(template_img, student_img)
+                aligned = align_images_orb(template_img, student_img, layout)
 
                 if aligned is None:
                     st.error("ORB 정렬 실패")
@@ -188,3 +188,4 @@ def show_grading_page():
             file_name="채점결과.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
