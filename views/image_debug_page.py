@@ -6,6 +6,7 @@ import io
 
 from core.database import load_exams
 from core.omr_engine import align_images_orb, detect_answer
+from core.scoring import grade_student
 
 
 # ==================================================
@@ -77,6 +78,19 @@ def enhance_mobile_image(img):
 
     return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
 
+# ==================================================
+# 📱 모바일 대비 강화 (인식용)
+# ==================================================
+def enhance_mobile_image(img):
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    cl = clahe.apply(gray)
+
+    blur = cv2.GaussianBlur(cl, (3, 3), 0)
+
+    return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
 
 # ==================================================
 # 🖼 이미지 디버그 페이지
@@ -96,6 +110,8 @@ def show_image_debug_page():
     if not exam.get("layout") or not exam.get("template_path"):
         st.warning("템플릿 설정 필요")
         return
+
+    mobile_mode = st.checkbox("📱 모바일 촬영 안정화 모드 사용", value=True)
 
     uploaded_imgs = st.file_uploader(
         "JPG / PNG 여러 장 업로드",
@@ -133,8 +149,12 @@ def show_image_debug_page():
                 st.error("ORB 정렬 실패")
                 continue
 
-            aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
-            debug_img = aligned.copy()
+            if mobile_mode:
+                aligned_for_detect = enhance_mobile_image(aligned)
+            else:
+                aligned_for_detect = aligned
+
+            aligned_gray = cv2.cvtColor(aligned_for_detect, cv2.COLOR_BGR2GRAY)
 
             total_score = 0
             section_scores = {sec_id: 0 for sec_id in sections}
@@ -303,5 +323,6 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
