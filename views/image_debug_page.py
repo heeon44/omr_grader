@@ -99,7 +99,7 @@ def enhance_mobile_image(img):
 # ==================================================
 def show_image_debug_page():
 
-    st.header("🖼 답안 채점 (이미지 디버그)")
+    st.header("🖼 답안 채점")
 
     exams = load_exams()
     if not exams:
@@ -324,6 +324,7 @@ def show_image_debug_page():
             file_name="image_debug_results.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
 
