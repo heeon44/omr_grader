@@ -93,229 +93,234 @@ def show_debug_page():
         st.warning("템플릿 설정 필요")
         return
 
-    tab_pdf = st.container()
+    uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
-    # =====================================================
-    # 📄 PDF 채점
-    # =====================================================
-    with tab_pdf:
+    if uploaded_pdf and st.button("채점 시작"):
 
-        uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
+        pdf_bytes = uploaded_pdf.read()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-        if uploaded_pdf and st.button("채점 시작"):
+        pages = []
 
-            # 🔥 PDF → 이미지 변환
-            pdf_bytes = uploaded_pdf.read()
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        for page_index in range(len(doc)):
+            page = doc[page_index]
+            pix = page.get_pixmap(dpi=200)
 
-            pages = []
+            img = np.frombuffer(pix.samples, dtype=np.uint8)
+            img = img.reshape(pix.height, pix.width, pix.n)
 
-            for page_index in range(len(doc)):
-                page = doc[page_index]
-                pix = page.get_pixmap(dpi=200)
+            if pix.n == 4:
+                img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
 
-                img = np.frombuffer(pix.samples, dtype=np.uint8)
-                img = img.reshape(pix.height, pix.width, pix.n)
+            pages.append(img)
 
-                if pix.n == 4:
-                    img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+        # 세션 초기화
+        st.session_state.pages = pages
+        st.session_state.answers = {}
+        st.session_state.aligned_pages = {}
+        st.session_state.exam_name = exam_name
 
-                pages.append(img)
+        # 템플릿 로딩
+        stream = np.fromfile(exam["template_path"], np.uint8)
+        template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
+        template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
 
-            # 템플릿 로딩
-            stream = np.fromfile(exam["template_path"], np.uint8)
-            template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
-            template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
+        layout = exam["layout"]
 
-            layout = exam["layout"]
-            sections = exam.get("sections", {})
-            scores = exam.get("scores", {})
+        # 🔥 자동 채점 먼저 전체 실행
+        for idx, page_img in enumerate(pages):
 
-            for idx, page_img in enumerate(pages):
+            student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
+            aligned = align_images_orb(template_img, student_img, layout)
 
-                st.subheader(f"📄 페이지 {idx+1}")
+            if aligned is None:
+                continue
 
-                student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
-                aligned = align_images_orb(template_img, student_img, layout)
+            aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
 
-                if aligned is None:
-                    st.error("ORB 정렬 실패")
-                    return
+            page_answers = {}
 
-                aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
-                debug_img = aligned.copy()
+            for q in range(1, exam["num_questions"] + 1):
 
-                total_score = 0
-                section_scores = {sec_id: 0 for sec_id in sections}
+                if str(q) not in layout.get("y_ranges", {}):
+                    continue
 
-                for q in range(1, exam["num_questions"] + 1):
+                col_index = ((q - 1) // layout["questions_per_column"]) + 1
+                col_index = str(min(col_index, len(layout["columns_x"])))
 
-                    if str(q) not in layout.get("y_ranges", {}):
-                        continue
+                if col_index not in layout["columns_x"]:
+                    continue
 
-                    col_index = ((q - 1) // layout["questions_per_column"]) + 1
-                    col_index = str(min(col_index, len(layout["columns_x"])))
+                x_bounds = layout["columns_x"][col_index]
+                y1, y2 = layout["y_ranges"][str(q)]
 
-                    if col_index not in layout["columns_x"]:
-                        continue
+                correct = exam["answers"][str(q)]["answer"]
+                expected = len(correct)
 
-                    x_bounds = layout["columns_x"][col_index]
-                    y1, y2 = layout["y_ranges"][str(q)]
-
-                    correct = exam["answers"][str(q)]["answer"]
-                    expected = len(correct)
-
-                    selected, _ = detect_answer(
-                        template_gray,
-                        aligned_gray,
-                        x_bounds,
-                        y1,
-                        y2,
-                        expected
-                    )
-
-                    is_correct = set(correct) == set(selected)
-
-                    # ===============================
-                    # 오답 문항 배경 표시
-                    # ===============================
-                    if not is_correct:
-                        qx_ranges = layout.get("question_x_ranges", {})
-                        qx = qx_ranges.get(col_index)
-
-                        if qx:
-                            overlay = debug_img.copy()
-                            cv2.rectangle(
-                                overlay,
-                                (qx[0], y1),
-                                (qx[1], y2),
-                                (0, 0, 255),
-                                -1
-                            )
-                            debug_img = cv2.addWeighted(
-                                overlay, 0.25,
-                                debug_img, 0.75, 0
-                            )
-
-                    # ===============================
-                    # 점수 계산
-                    # ===============================
-                    if is_correct:
-                        total_score += scores.get(str(q), 1)
-                        for sec_id, sec in sections.items():
-                            if q in sec.get("questions", []):
-                                section_scores[sec_id] += scores.get(str(q), 1)
-
-                    # ===============================
-                    # 버블 테두리 (기본 빨강)
-                    # ===============================
-                    for i in range(5):
-                        if i + 1 >= len(x_bounds):
-                            continue
-                        cv2.rectangle(
-                            debug_img,
-                            (x_bounds[i], y1),
-                            (x_bounds[i + 1], y2),
-                            (0, 0, 255),
-                            2
-                        )
-
-                    # ===============================
-                    # 정답 / 학생 선택 / 일치 색상 표시
-                    # ===============================
-                    for i in range(5):
-                        if i + 1 >= len(x_bounds):
-                            continue
-
-                        bubble_id = str(i + 1)
-
-                        # 🔥 색상 결정
-                        if bubble_id in correct and bubble_id in selected:
-                            color = (0, 255, 0)      # 🟢 정답 일치
-
-                        elif bubble_id in correct:
-                            color = (255, 0, 0)      # 🔵 정답
-
-                        elif bubble_id in selected:
-                            color = (0, 255, 255)    # 🟡 학생 선택
-
-                        else:
-                            continue
-
-                        overlay = debug_img.copy()
-                        cv2.rectangle(
-                            overlay,
-                            (x_bounds[i], y1),
-                            (x_bounds[i + 1], y2),
-                            color,
-                            -1
-                        )
-                        debug_img = cv2.addWeighted(
-                            overlay, 0.35,
-                            debug_img, 0.65, 0
-                        )
-
-                        cv2.rectangle(
-                            debug_img,
-                            (x_bounds[i], y1),
-                            (x_bounds[i + 1], y2),
-                            color,
-                            5
-                        )
-
-                    # ===============================
-                    # 문항 번호 표시
-                    # ===============================
-                    qx_ranges = layout.get("question_x_ranges", {})
-                    qx = qx_ranges.get(col_index)
-
-                    if qx:
-                        cv2.putText(
-                            debug_img,
-                            f"Q{q}",
-                            (qx[0], y1 - 5),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            (0, 0, 255),
-                            2
-                        )
-                        
-                st.image(debug_img, channels="BGR")
-                
-                cols = st.columns(len(section_scores) + 1)
-
-                i = 0
-                for sec_id, score_val in section_scores.items():
-                    sec_name = sections[sec_id]["name"]
-
-                    cols[i].markdown(
-                        f"""
-                        <div style="text-align:center;">
-                            <div style="font-size:30px;">
-                                {sec_name}
-                            </div>
-                            <div style="font-size:44px; font-weight:bold;">
-                                {score_val}점
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    i += 1
-
-                cols[i].markdown(
-                    f"""
-                    <div style="text-align:center;">
-                        <div style="font-size:32px;">
-                            총점
-                        </div>
-                        <div style="font-size:50px; font-weight:bold; color:#2E8B57;">
-                            {total_score}점
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
+                selected, _ = detect_answer(
+                    template_gray,
+                    aligned_gray,
+                    x_bounds,
+                    y1,
+                    y2,
+                    expected
                 )
+
+                page_answers[q] = selected
+
+            st.session_state.answers[idx] = page_answers
+            st.session_state.aligned_pages[idx] = aligned
+
+        st.success("채점 완료!")
+
+    # ===============================
+    # 채점 완료 후 화면
+    # ===============================
+    if "aligned_pages" not in st.session_state:
+        return
+
+    pages_count = len(st.session_state.aligned_pages)
+
+    selected_page = st.selectbox(
+        "페이지 선택",
+        list(range(1, pages_count + 1)),
+        key="selected_page"
+    ) - 1
+
+    aligned = st.session_state.aligned_pages[selected_page]
+    page_answers = st.session_state.answers[selected_page]
+
+    layout = exam["layout"]
+    sections = exam.get("sections", {})
+    scores = exam.get("scores", {})
+
+    debug_img = aligned.copy()
+    total_score = 0
+    section_scores = {sec_id: 0 for sec_id in sections}
+
+    for q in range(1, exam["num_questions"] + 1):
+
+        if str(q) not in layout.get("y_ranges", {}):
+            continue
+
+        col_index = ((q - 1) // layout["questions_per_column"]) + 1
+        col_index = str(min(col_index, len(layout["columns_x"])))
+
+        if col_index not in layout["columns_x"]:
+            continue
+
+        x_bounds = layout["columns_x"][col_index]
+        y1, y2 = layout["y_ranges"][str(q)]
+
+        correct = exam["answers"][str(q)]["answer"]
+        selected = page_answers.get(q, [])
+
+        is_correct = set(correct) == set(selected)
+
+        if is_correct:
+            total_score += scores.get(str(q), 1)
+            for sec_id, sec in sections.items():
+                if q in sec.get("questions", []):
+                    section_scores[sec_id] += scores.get(str(q), 1)
+
+        for i in range(5):
+            if i + 1 >= len(x_bounds):
+                continue
+
+            bubble_id = str(i + 1)
+
+            if bubble_id in correct and bubble_id in selected:
+                color = (0, 255, 0)
+            elif bubble_id in correct:
+                color = (255, 0, 0)
+            elif bubble_id in selected:
+                color = (0, 255, 255)
+            else:
+                continue
+
+            overlay = debug_img.copy()
+            cv2.rectangle(
+                overlay,
+                (x_bounds[i], y1),
+                (x_bounds[i + 1], y2),
+                color,
+                -1
+            )
+            debug_img = cv2.addWeighted(
+                overlay, 0.35,
+                debug_img, 0.65, 0
+            )
+
+            cv2.rectangle(
+                debug_img,
+                (x_bounds[i], y1),
+                (x_bounds[i + 1], y2),
+                color,
+                4
+            )
+
+    st.image(debug_img, channels="BGR")
+
+    # ===============================
+    # 수정 표
+    # ===============================
+    import pandas as pd
+
+    st.markdown("### 📝 문항별 답 수정")
+
+    table_data = []
+    for q in range(1, exam["num_questions"] + 1):
+        table_data.append({
+            "문항": q,
+            "학생 선택 답": ", ".join(page_answers.get(q, []))
+        })
+
+    df = pd.DataFrame(table_data)
+
+    edited_df = st.data_editor(
+        df,
+        key=f"editor_{selected_page}",
+        use_container_width=True,
+        num_rows="fixed"
+    )
+
+    if st.button("수정하기", key=f"save_{selected_page}"):
+
+        new_answers = {}
+
+        for _, row in edited_df.iterrows():
+            qn = int(row["문항"])
+            value = str(row["학생 선택 답"]).strip()
+
+            if value == "":
+                new_answers[qn] = []
+            else:
+                new_answers[qn] = [v.strip() for v in value.split(",")]
+
+        st.session_state.answers[selected_page] = new_answers
+        st.rerun()
+
+    # ===============================
+    # 점수 표시
+    # ===============================
+    cols = st.columns(len(section_scores) + 1)
+
+    i = 0
+    for sec_id, score_val in section_scores.items():
+        sec_name = sections[sec_id]["name"]
+
+        cols[i].markdown(
+            f"<h3 style='text-align:center'>{sec_name}</h3>"
+            f"<h1 style='text-align:center'>{score_val}점</h1>",
+            unsafe_allow_html=True
+        )
+        i += 1
+
+    cols[i].markdown(
+        f"<h3 style='text-align:center'>총점</h3>"
+        f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
+        unsafe_allow_html=True
+    )
 
 
 
