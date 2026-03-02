@@ -278,68 +278,67 @@ def show_debug_page():
                 4
             )
 
-# =====================================================
-# 🔥 이미지 + 세로형 답 수정 레이아웃
-# =====================================================
+    # =====================================================
+    # 🔥 이미지 + 세로형 답 수정 레이아웃
+    # =====================================================
 
-col_img, col_edit = st.columns([2, 1])
+    col_img, col_edit = st.columns([2, 1])
 
-with col_img:
-    st.image(debug_img, channels="BGR", width=850)
+    with col_img:
+        st.image(debug_img, channels="BGR", width=850)
 
-    # ===============================
-    # 페이지 이동 버튼 (이미지 아래)
-    # ===============================
-    col1, col2, col3 = st.columns([1, 2, 1])
+        # ===============================
+        # 페이지 이동 버튼 (이미지 아래)
+        # ===============================
+        nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
 
-    with col1:
-        if st.button("⬅", key="prev_btn"):
-            if st.session_state.current_page > 0:
-                st.session_state.current_page -= 1
-                st.rerun()
+        with nav_col1:
+            if st.button("⬅", key="prev_btn"):
+                if st.session_state.current_page > 0:
+                    st.session_state.current_page -= 1
+                    st.rerun()
 
-    with col2:
-        st.markdown(
-            f"<h4 style='text-align:center'>"
-            f"{selected_page+1} / {total_pages}"
-            f"</h4>",
-            unsafe_allow_html=True
-        )
+        with nav_col2:
+            st.markdown(
+                f"<h4 style='text-align:center'>"
+                f"{selected_page+1} / {total_pages}"
+                f"</h4>",
+                unsafe_allow_html=True
+            )
 
-    with col3:
-        if st.button("➡", key="next_btn"):
-            if st.session_state.current_page < total_pages - 1:
-                st.session_state.current_page += 1
-                st.rerun()
+        with nav_col3:
+            if st.button("➡", key="next_btn"):
+                if st.session_state.current_page < total_pages - 1:
+                    st.session_state.current_page += 1
+                    st.rerun()
 
-with col_edit:
+    with col_edit:
 
-    st.markdown("### 📝 답 수정")
+        st.markdown("### 📝 답 수정")
 
-    updated_answers = {}
+        updated_answers = {}
 
-    for q in range(1, exam["num_questions"] + 1):
+        for q in range(1, exam["num_questions"] + 1):
 
-        current_value = ", ".join(page_answers.get(q, []))
+            current_value = ", ".join(page_answers.get(q, []))
 
-        new_value = st.text_input(
-            f"{q}번",
-            value=current_value,
-            key=f"q_{selected_page}_{q}"
-        )
+            new_value = st.text_input(
+                f"{q}번",
+                value=current_value,
+                key=f"q_{selected_page}_{q}"
+            )
 
-        if new_value.strip() == "":
-            updated_answers[q] = []
-        else:
-            updated_answers[q] = [
-                v.strip() for v in new_value.split(",")
-            ]
+            if new_value.strip() == "":
+                updated_answers[q] = []
+            else:
+                updated_answers[q] = [
+                    v.strip() for v in new_value.split(",")
+                ]
 
-    if st.button("수정 반영", key=f"apply_{selected_page}"):
+        if st.button("수정 반영", key=f"apply_{selected_page}"):
 
-        st.session_state.answers[selected_page] = updated_answers
-        st.rerun()
-
+            st.session_state.answers[selected_page] = updated_answers
+            st.rerun()
     # =====================================================
     # 🔥 점수 표시 (수정값 기준)
     # =====================================================
@@ -361,5 +360,6 @@ with col_edit:
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
