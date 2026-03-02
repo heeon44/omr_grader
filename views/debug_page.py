@@ -173,38 +173,38 @@ def show_debug_page():
 
         st.success("채점 완료!")
 
-   		# ===============================
-		# 페이지 이동 UI (← 3 / 18 →)
-		# ===============================
+    # ===============================
+    # 페이지 이동 UI (← 3 / N →)
+    # ===============================
 
-		if "current_page" not in st.session_state:
-			st.session_state.current_page = 0
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = 0
 
-		total_pages = len(st.session_state.aligned_pages)
+    total_pages = len(st.session_state.aligned_pages)
 
-		col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
 
-		with col1:
-			if st.button("⬅"):
-				if st.session_state.current_page > 0:
-					st.session_state.current_page -= 1
-					st.rerun()
+    with col1:
+        if st.button("⬅"):
+            if st.session_state.current_page > 0:
+                st.session_state.current_page -= 1
+                st.rerun()
 
-		with col2:
-			st.markdown(
-				f"<h3 style='text-align:center'>"
-				f"{st.session_state.current_page+1} / {total_pages}"
-				f"</h3>",
-				unsafe_allow_html=True
-			)
+    with col2:
+        st.markdown(
+            f"<h3 style='text-align:center'>"
+            f"{st.session_state.current_page+1} / {total_pages}"
+            f"</h3>",
+            unsafe_allow_html=True
+        )
 
-		with col3:
-			if st.button("➡"):
-				if st.session_state.current_page < total_pages - 1:
-					st.session_state.current_page += 1
-					st.rerun()
+    with col3:
+        if st.button("➡"):
+            if st.session_state.current_page < total_pages - 1:
+                st.session_state.current_page += 1
+                st.rerun()
 
-		selected_page = st.session_state.current_page
+    selected_page = st.session_state.current_page
 
     aligned = st.session_state.aligned_pages[selected_page]
     page_answers = st.session_state.answers[selected_page]
@@ -339,6 +339,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
