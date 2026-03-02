@@ -83,6 +83,7 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
     MIN_PIXEL = 50
     MIN_GAP = 25
     MEAN_RATIO = 1.15
+    FILL_GAP_THRESHOLD = 0.025   # 🔥 체크 판단 핵심값
 
     bubble_scores = []
     fill_ratios = []
@@ -105,7 +106,7 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
             x1 + margin_x : x2 - margin_x
         ]
 
-        # 🔧 5번 편향 완화용 추가 경계 축소
+        # 🔧 경계 오염 완화
         pad = 2
         template_bubble = template_bubble[pad:-pad, pad:-pad]
         student_bubble  = student_bubble[pad:-pad, pad:-pad]
@@ -120,32 +121,32 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
             cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
 
-        # ===== 디버그용 (임시) =====
-        if i == 0:
-            import streamlit as st
-            st.image(student_bin, caption="DEBUG student_bin", width=150)
-        # ============================
-
-        # XOR 점수 (기존 유지)
+        # XOR 점수
         diff = cv2.bitwise_xor(template_bin, student_bin)
         xor_score = cv2.countNonZero(diff)
         bubble_scores.append(xor_score)
 
-        # fill_ratio 계산 (보조 판단용)
+        # Fill 비율
         area = student_bin.shape[0] * student_bin.shape[1]
         fill = cv2.countNonZero(student_bin) / float(area)
         fill_ratios.append(fill)
 
-        # ===== 디버그 출력 =====
-        if i == 4:  # 마지막 버블에서 한 번만 출력
-            import streamlit as st
-            st.write("XOR 점수:", bubble_scores)
-            st.write("Fill 비율:", fill_ratios)
-        # ======================
-    
-
-    sorted_indices = np.argsort(bubble_scores)[::-1]
+    # ===============================
+    # ✅ 1단계: Fill 우선 판단 (체크 대응)
+    # ===============================
     fill_sorted = np.argsort(fill_ratios)[::-1]
+    f_top_i = fill_sorted[0]
+    f_second_i = fill_sorted[1]
+
+    f_gap = fill_ratios[f_top_i] - fill_ratios[f_second_i]
+
+    if f_gap > FILL_GAP_THRESHOLD:
+        return [str(f_top_i + 1)], bubble_scores
+
+    # ===============================
+    # ✅ 2단계: 기존 XOR 판단 (완전 채움 보호)
+    # ===============================
+    sorted_indices = np.argsort(bubble_scores)[::-1]
 
     selected = []
     mean_score = np.mean(bubble_scores)
@@ -153,40 +154,17 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
     for idx in sorted_indices[:expected_count]:
 
         top = bubble_scores[idx]
-        second = bubble_scores[sorted_indices[expected_count]] if expected_count < len(sorted_indices) else 0
+        second = bubble_scores[sorted_indices[1]] if len(sorted_indices) > 1 else 0
         gap = top - second
 
-        # ✅ 1차: 기존 강한 마킹 (완전 채움 보호)
         if (
             top > MIN_PIXEL and
             gap > MIN_GAP and
             top > mean_score * MEAN_RATIO
         ):
             selected.append(str(idx + 1))
-            continue
-
-        # ✅ 2차: 약한 마킹 보조 판단 (체크/동그라미용)
-        weak_candidate = (
-            top > MIN_PIXEL * 0.6 and
-            gap > MIN_GAP * 0.4
-        )
-
-        if weak_candidate:
-
-            f_top_i = fill_sorted[0]
-            f_second_i = fill_sorted[1]
-
-            f_top = fill_ratios[f_top_i]
-            f_second = fill_ratios[f_second_i]
-            f_gap = f_top - f_second
-
-            # 🔧 fill_ratio 차이 기준 (튜닝 가능)
-            if f_gap > 0.02:
-                selected.append(str(f_top_i + 1))
 
     return selected, bubble_scores
-
-
 
 
 
