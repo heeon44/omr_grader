@@ -96,9 +96,17 @@ def show_debug_page():
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
     # =====================================================
-    # 🔥 채점 시작
+    # 🔥 채점 시작 (최초 1회만 실행)
     # =====================================================
-    if uploaded_pdf and st.button("채점 시작"):
+    start_grading = st.button("채점 시작")
+
+    if uploaded_pdf and start_grading:
+
+        # 🔥 이미 채점된 상태라면 초기화
+        if "aligned_pages" in st.session_state:
+            del st.session_state["aligned_pages"]
+            del st.session_state["answers"]
+            del st.session_state["current_page"]
 
         pdf_bytes = uploaded_pdf.read()
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -117,7 +125,7 @@ def show_debug_page():
 
             pages.append(img)
 
-        # 세션 초기화
+        # 세션 초기화 (최초 채점용)
         st.session_state.answers = {}
         st.session_state.aligned_pages = {}
         st.session_state.current_page = 0
@@ -130,7 +138,9 @@ def show_debug_page():
 
         layout = exam["layout"]
 
-        # 🔥 전체 자동채점
+        # =====================================================
+        # 🔥 전체 자동채점 실행
+        # =====================================================
         for idx, page_img in enumerate(pages):
 
             student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
@@ -181,7 +191,6 @@ def show_debug_page():
     # =====================================================
     if "aligned_pages" not in st.session_state:
         return
-
     # =====================================================
     # 🔥 현재 페이지 선택
     # =====================================================
@@ -356,3 +365,4 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
