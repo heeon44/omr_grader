@@ -135,6 +135,14 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
         area = student_bin.shape[0] * student_bin.shape[1]
         fill = cv2.countNonZero(student_bin) / float(area)
         fill_ratios.append(fill)
+        
+            # ===== 디버그 출력 =====
+            if i == 4:  # 마지막 버블에서 한 번만 출력
+                import streamlit as st
+                st.write("XOR 점수:", bubble_scores)
+                st.write("Fill 비율:", fill_ratios)
+            # ======================
+    
 
     sorted_indices = np.argsort(bubble_scores)[::-1]
     fill_sorted = np.argsort(fill_ratios)[::-1]
@@ -177,6 +185,7 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
                 selected.append(str(f_top_i + 1))
 
     return selected, bubble_scores
+
 
 
 
