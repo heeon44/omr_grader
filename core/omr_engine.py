@@ -120,9 +120,11 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
             cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
 
-        # ===== 디버그용 (임시 추가) =====
-        if i == 0:  # 첫 번째 선택지만 저장
-            cv2.imwrite("debug_student_bin.png", student_bin)
+        # ===== 디버그용 (임시) =====
+        if i == 0:
+            import streamlit as st
+            st.image(student_bin, caption="DEBUG student_bin", width=150)
+        # ============================
 
         # XOR 점수 (기존 유지)
         diff = cv2.bitwise_xor(template_bin, student_bin)
@@ -175,5 +177,6 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
                 selected.append(str(f_top_i + 1))
 
     return selected, bubble_scores
+
 
 
