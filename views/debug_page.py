@@ -252,7 +252,7 @@ def show_debug_page():
                                 overlay,
                                 (x_bounds[i], y1),
                                 (x_bounds[i + 1], y2),
-                                (0, 255, 0),
+                                (0, 255, 255),
                                 -1
                             )
                             debug_img = cv2.addWeighted(
@@ -264,7 +264,7 @@ def show_debug_page():
                                 debug_img,
                                 (x_bounds[i], y1),
                                 (x_bounds[i + 1], y2),
-                                (0, 255, 0),
+                                (0, 255, 255),
                                 5
                             )
 
@@ -281,7 +281,9 @@ def show_debug_page():
                             (0, 0, 255),
                             2
                         )
-
+                        
+                st.image(debug_img, channels="BGR")
+                
                 cols = st.columns(len(section_scores) + 1)
 
                 i = 0
@@ -317,5 +319,6 @@ def show_debug_page():
                     unsafe_allow_html=True
                 )
 
-                st.image(debug_img, channels="BGR")
+
+
 
