@@ -173,19 +173,38 @@ def show_debug_page():
 
         st.success("채점 완료!")
 
-    # ===============================
-    # 채점 완료 후 화면
-    # ===============================
-    if "aligned_pages" not in st.session_state:
-        return
+   		# ===============================
+		# 페이지 이동 UI (← 3 / 18 →)
+		# ===============================
 
-    pages_count = len(st.session_state.aligned_pages)
+		if "current_page" not in st.session_state:
+			st.session_state.current_page = 0
 
-    selected_page = st.selectbox(
-        "페이지 선택",
-        list(range(1, pages_count + 1)),
-        key="selected_page"
-    ) - 1
+		total_pages = len(st.session_state.aligned_pages)
+
+		col1, col2, col3 = st.columns([1, 2, 1])
+
+		with col1:
+			if st.button("⬅"):
+				if st.session_state.current_page > 0:
+					st.session_state.current_page -= 1
+					st.rerun()
+
+		with col2:
+			st.markdown(
+				f"<h3 style='text-align:center'>"
+				f"{st.session_state.current_page+1} / {total_pages}"
+				f"</h3>",
+				unsafe_allow_html=True
+			)
+
+		with col3:
+			if st.button("➡"):
+				if st.session_state.current_page < total_pages - 1:
+					st.session_state.current_page += 1
+					st.rerun()
+
+		selected_page = st.session_state.current_page
 
     aligned = st.session_state.aligned_pages[selected_page]
     page_answers = st.session_state.answers[selected_page]
@@ -261,45 +280,44 @@ def show_debug_page():
 
     st.image(debug_img, channels="BGR")
 
-    # ===============================
-    # 수정 표
-    # ===============================
-    import pandas as pd
+		# ===============================
+		# 한눈에 보이는 가로형 답 수정 표
+		# ===============================
 
-    st.markdown("### 📝 문항별 답 수정")
+		import pandas as pd
 
-    table_data = []
-    for q in range(1, exam["num_questions"] + 1):
-        table_data.append({
-            "문항": q,
-            "학생 선택 답": ", ".join(page_answers.get(q, []))
-        })
+		st.markdown("### 📝 문항별 답 수정")
 
-    df = pd.DataFrame(table_data)
+		page_answers = st.session_state.answers[selected_page]
 
-    edited_df = st.data_editor(
-        df,
-        key=f"editor_{selected_page}",
-        use_container_width=True,
-        num_rows="fixed"
-    )
+		row_data = {}
+		for q in range(1, exam["num_questions"] + 1):
+			row_data[f"{q}번"] = ", ".join(page_answers.get(q, []))
 
-    if st.button("수정하기", key=f"save_{selected_page}"):
+		df = pd.DataFrame([row_data])
 
-        new_answers = {}
+		edited_df = st.data_editor(
+			df,
+			key=f"editor_{selected_page}",
+			use_container_width=True,
+			num_rows="fixed"
+		)
 
-        for _, row in edited_df.iterrows():
-            qn = int(row["문항"])
-            value = str(row["학생 선택 답"]).strip()
+		if st.button("수정하기", key=f"save_{selected_page}"):
 
-            if value == "":
-                new_answers[qn] = []
-            else:
-                new_answers[qn] = [v.strip() for v in value.split(",")]
+			new_answers = {}
 
-        st.session_state.answers[selected_page] = new_answers
-        st.rerun()
+			for col in edited_df.columns:
+				q_num = int(col.replace("번", ""))
+				value = str(edited_df.iloc[0][col]).strip()
 
+				if value == "":
+					new_answers[q_num] = []
+				else:
+					new_answers[q_num] = [v.strip() for v in value.split(",")]
+
+			st.session_state.answers[selected_page] = new_answers
+			st.rerun()
     # ===============================
     # 점수 표시
     # ===============================
@@ -321,6 +339,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
