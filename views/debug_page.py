@@ -279,74 +279,46 @@ def show_debug_page():
             )
 
     # =====================================================
-    # 🔥 이미지 + 2열 10문항 배열 수정표
+    # 🔥 이미지 + 가로 5열 수정표
     # =====================================================
 
-    col_img, col_edit = st.columns([3.5, 1])
+    col_img, col_edit = st.columns([3.5, 1.5], gap="small")
 
     with col_img:
-        st.image(debug_img, channels="BGR", width=820)
+        st.image(debug_img, channels="BGR", width=850)
 
     with col_edit:
 
-        st.markdown("<div style='height:160px'></div>", unsafe_allow_html=True)
-        
         st.markdown("### 📝 답 수정")
 
         updated_answers = {}
         total_q = exam["num_questions"]
 
-        # 🔥 10개 단위로 블록 생성
-        for block_start in range(1, total_q + 1, 20):
+        # 🔥 5개씩 가로 배열
+        for row_start in range(1, total_q + 1, 5):
 
-            left_start = block_start
-            left_end = min(block_start + 9, total_q)
+            cols = st.columns(5)
 
-            right_start = block_start + 10
-            right_end = min(block_start + 19, total_q)
+            for i in range(5):
 
-            col_left, col_right = st.columns(2)
+                q = row_start + i
+                if q > total_q:
+                    continue
 
-            # 왼쪽 1~10
-            with col_left:
-                for q in range(left_start, left_end + 1):
+                current_value = ", ".join(page_answers.get(q, []))
 
-                    current_value = ", ".join(page_answers.get(q, []))
+                new_value = cols[i].text_input(
+                    f"{q}",
+                    value=current_value,
+                    key=f"q_{selected_page}_{q}"
+                )
 
-                    new_value = st.text_input(
-                        f"{q}",
-                        value=current_value,
-                        key=f"q_{selected_page}_{q}"
-                    )
-
-                    if new_value.strip() == "":
-                        updated_answers[q] = []
-                    else:
-                        updated_answers[q] = [
-                            v.strip() for v in new_value.split(",")
-                        ]
-
-            # 오른쪽 11~20
-            with col_right:
-                if right_start <= total_q:
-                    for q in range(right_start, right_end + 1):
-
-                        current_value = ", ".join(page_answers.get(q, []))
-
-                        new_value = st.text_input(
-                            f"{q}",
-                            value=current_value,
-                            key=f"q_{selected_page}_{q}"
-                        )
-
-                        if new_value.strip() == "":
-                            updated_answers[q] = []
-                        else:
-                            updated_answers[q] = [
-                                v.strip() for v in new_value.split(",")
-                            ]
-
-            st.markdown("---")
+                if new_value.strip() == "":
+                    updated_answers[q] = []
+                else:
+                    updated_answers[q] = [
+                        v.strip() for v in new_value.split(",")
+                    ]
 
         if st.button("수정 반영", key=f"apply_{selected_page}"):
 
@@ -354,26 +326,26 @@ def show_debug_page():
             st.rerun()
 
     # =====================================================
-    # 🔥 페이지 이동 버튼 (표 아래)
+    # 🔥 페이지 이동 버튼 (완전 양끝 정렬)
     # =====================================================
 
-    nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
+    nav_left, nav_center, nav_right = st.columns([1, 6, 1])
 
-    with nav_col1:
+    with nav_left:
         if st.button("⬅", key="prev_btn"):
             if st.session_state.current_page > 0:
                 st.session_state.current_page -= 1
                 st.rerun()
 
-    with nav_col2:
+    with nav_center:
         st.markdown(
-            f"<h4 style='text-align:center'>"
+            f"<h4 style='text-align:center;'>"
             f"{selected_page+1} / {total_pages}"
             f"</h4>",
             unsafe_allow_html=True
         )
 
-    with nav_col3:
+    with nav_right:
         if st.button("➡", key="next_btn"):
             if st.session_state.current_page < total_pages - 1:
                 st.session_state.current_page += 1
@@ -400,6 +372,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
