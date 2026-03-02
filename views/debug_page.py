@@ -174,15 +174,10 @@ def show_debug_page():
         st.success("채점 완료!")
 		
     # ===============================
-    # 채점 완료 후 화면 표시
+    # 채점 완료 후 화면
     # ===============================
     if "aligned_pages" not in st.session_state:
         return
-
-
-    # ===============================
-    # 페이지 이동 UI (← 3 / N →)
-    # ===============================
 
     if "current_page" not in st.session_state:
         st.session_state.current_page = 0
@@ -287,43 +282,42 @@ def show_debug_page():
 
     st.image(debug_img, channels="BGR")
 
-		# ===============================
-		# 한눈에 보이는 가로형 답 수정 표
+    # ===============================
+    # 가로형 답 수정 표
+    # ===============================
+    import pandas as pd
 
-		import pandas as pd
+    st.markdown("### 📝 문항별 답 수정")
 
-		st.markdown("### 📝 문항별 답 수정")
+    row_data = {}
+    for q in range(1, exam["num_questions"] + 1):
+        row_data[f"{q}번"] = ", ".join(page_answers.get(q, []))
 
-		page_answers = st.session_state.answers[selected_page]
+    df = pd.DataFrame([row_data])
 
-		row_data = {}
-		for q in range(1, exam["num_questions"] + 1):
-			row_data[f"{q}번"] = ", ".join(page_answers.get(q, []))
+    edited_df = st.data_editor(
+        df,
+        key=f"editor_{selected_page}",
+        use_container_width=True,
+        num_rows="fixed"
+    )
 
-		df = pd.DataFrame([row_data])
+    if st.button("수정하기", key=f"save_{selected_page}"):
 
-		edited_df = st.data_editor(
-			df,
-			key=f"editor_{selected_page}",
-			use_container_width=True,
-			num_rows="fixed"
-		)
+        new_answers = {}
 
-		if st.button("수정하기", key=f"save_{selected_page}"):
+        for col in edited_df.columns:
+            q_num = int(col.replace("번", ""))
+            value = str(edited_df.iloc[0][col]).strip()
 
-			new_answers = {}
+            if value == "":
+                new_answers[q_num] = []
+            else:
+                new_answers[q_num] = [v.strip() for v in value.split(",")]
 
-			for col in edited_df.columns:
-				q_num = int(col.replace("번", ""))
-				value = str(edited_df.iloc[0][col]).strip()
+        st.session_state.answers[selected_page] = new_answers
+        st.rerun()
 
-				if value == "":
-					new_answers[q_num] = []
-				else:
-					new_answers[q_num] = [v.strip() for v in value.split(",")]
-
-			st.session_state.answers[selected_page] = new_answers
-			st.rerun()
     # ===============================
     # 점수 표시
     # ===============================
