@@ -176,8 +176,10 @@ def show_debug_page():
 
                     is_correct = set(correct) == set(selected)
 
+                    # ===============================
+                    # 오답 문항 배경 표시
+                    # ===============================
                     if not is_correct:
-
                         qx_ranges = layout.get("question_x_ranges", {})
                         qx = qx_ranges.get(col_index)
 
@@ -195,12 +197,18 @@ def show_debug_page():
                                 debug_img, 0.75, 0
                             )
 
+                    # ===============================
+                    # 점수 계산
+                    # ===============================
                     if is_correct:
                         total_score += scores.get(str(q), 1)
                         for sec_id, sec in sections.items():
                             if q in sec.get("questions", []):
                                 section_scores[sec_id] += scores.get(str(q), 1)
 
+                    # ===============================
+                    # 버블 테두리 (기본 빨강)
+                    # ===============================
                     for i in range(5):
                         if i + 1 >= len(x_bounds):
                             continue
@@ -212,62 +220,52 @@ def show_debug_page():
                             2
                         )
 
+                    # ===============================
+                    # 정답 / 학생 선택 / 일치 색상 표시
+                    # ===============================
                     for i in range(5):
                         if i + 1 >= len(x_bounds):
                             continue
 
                         bubble_id = str(i + 1)
 
-                        if bubble_id in correct:
-                            overlay = debug_img.copy()
-                            cv2.rectangle(
-                                overlay,
-                                (x_bounds[i], y1),
-                                (x_bounds[i + 1], y2),
-                                (255, 0, 0),
-                                -1
-                            )
-                            debug_img = cv2.addWeighted(
-                                overlay, 0.25,
-                                debug_img, 0.75, 0
-                            )
+                        # 🔥 색상 결정
+                        if bubble_id in correct and bubble_id in selected:
+                            color = (0, 255, 0)      # 🟢 정답 일치
 
-                            cv2.rectangle(
-                                debug_img,
-                                (x_bounds[i], y1),
-                                (x_bounds[i + 1], y2),
-                                (255, 0, 0),
-                                5
-                            )
+                        elif bubble_id in correct:
+                            color = (255, 0, 0)      # 🔵 정답
 
-                    for i in range(5):
-                        if i + 1 >= len(x_bounds):
+                        elif bubble_id in selected:
+                            color = (0, 255, 255)    # 🟡 학생 선택
+
+                        else:
                             continue
 
-                        bubble_id = str(i + 1)
+                        overlay = debug_img.copy()
+                        cv2.rectangle(
+                            overlay,
+                            (x_bounds[i], y1),
+                            (x_bounds[i + 1], y2),
+                            color,
+                            -1
+                        )
+                        debug_img = cv2.addWeighted(
+                            overlay, 0.35,
+                            debug_img, 0.65, 0
+                        )
 
-                        if bubble_id in selected:
-                            overlay = debug_img.copy()
-                            cv2.rectangle(
-                                overlay,
-                                (x_bounds[i], y1),
-                                (x_bounds[i + 1], y2),
-                                (0, 255, 255),
-                                -1
-                            )
-                            debug_img = cv2.addWeighted(
-                                overlay, 0.35,
-                                debug_img, 0.65, 0
-                            )
+                        cv2.rectangle(
+                            debug_img,
+                            (x_bounds[i], y1),
+                            (x_bounds[i + 1], y2),
+                            color,
+                            5
+                        )
 
-                            cv2.rectangle(
-                                debug_img,
-                                (x_bounds[i], y1),
-                                (x_bounds[i + 1], y2),
-                                (0, 255, 255),
-                                5
-                            )
-
+                    # ===============================
+                    # 문항 번호 표시
+                    # ===============================
                     qx_ranges = layout.get("question_x_ranges", {})
                     qx = qx_ranges.get(col_index)
 
@@ -318,6 +316,7 @@ def show_debug_page():
                     """,
                     unsafe_allow_html=True
                 )
+
 
 
 
