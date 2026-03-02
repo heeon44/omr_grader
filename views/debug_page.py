@@ -282,14 +282,14 @@ def show_debug_page():
     # 🔥 이미지 + 2열 10문항 배열 수정표
     # =====================================================
 
-    col_img, col_edit = st.columns([2.5, 1])
+    col_img, col_edit = st.columns([3.5, 1])
 
     with col_img:
-        st.image(debug_img, channels="BGR", width=900)
+        st.image(debug_img, channels="BGR", width=820)
 
     with col_edit:
 
-        st.markdown("<div style='height:120px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:160px'></div>", unsafe_allow_html=True)
         
         st.markdown("### 📝 답 수정")
 
@@ -400,6 +400,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
