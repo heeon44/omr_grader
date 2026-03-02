@@ -288,7 +288,7 @@ def show_debug_page():
         st.image(debug_img, channels="BGR", width=850)
 
     with col_edit:
-        st.markdown("<div style='height:200px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
 
         st.markdown("### 📝 답 수정")
 
@@ -373,6 +373,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
