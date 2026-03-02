@@ -83,7 +83,9 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
     MIN_PIXEL = 50
     MIN_GAP = 25
     MEAN_RATIO = 1.15
-    FILL_GAP_THRESHOLD = 0.025   # 🔥 체크 판단 핵심값
+
+    STRONG_MARK_THRESHOLD = 1200   # 🔥 완전 채움 기준
+    FILL_GAP_THRESHOLD = 0.025
 
     bubble_scores = []
     fill_ratios = []
@@ -106,7 +108,6 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
             x1 + margin_x : x2 - margin_x
         ]
 
-        # 🔧 경계 오염 완화
         pad = 2
         template_bubble = template_bubble[pad:-pad, pad:-pad]
         student_bubble  = student_bubble[pad:-pad, pad:-pad]
@@ -121,18 +122,36 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
             cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
 
-        # XOR 점수
         diff = cv2.bitwise_xor(template_bin, student_bin)
         xor_score = cv2.countNonZero(diff)
         bubble_scores.append(xor_score)
 
-        # Fill 비율
         area = student_bin.shape[0] * student_bin.shape[1]
         fill = cv2.countNonZero(student_bin) / float(area)
         fill_ratios.append(fill)
 
+    sorted_indices = np.argsort(bubble_scores)[::-1]
+    top_i = sorted_indices[0]
+    second_i = sorted_indices[1]
+
+    top = bubble_scores[top_i]
+    second = bubble_scores[second_i]
+    gap = top - second
+    mean_score = np.mean(bubble_scores)
+
     # ===============================
-    # ✅ 1단계: Fill 우선 판단 (체크 대응)
+    # 1️⃣ 강한 마킹 → XOR 사용
+    # ===============================
+    if top > STRONG_MARK_THRESHOLD:
+        if (
+            top > MIN_PIXEL and
+            gap > MIN_GAP and
+            top > mean_score * MEAN_RATIO
+        ):
+            return [str(top_i + 1)], bubble_scores
+
+    # ===============================
+    # 2️⃣ 약한 마킹 → Fill 사용
     # ===============================
     fill_sorted = np.argsort(fill_ratios)[::-1]
     f_top_i = fill_sorted[0]
@@ -143,28 +162,8 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
     if f_gap > FILL_GAP_THRESHOLD:
         return [str(f_top_i + 1)], bubble_scores
 
-    # ===============================
-    # ✅ 2단계: 기존 XOR 판단 (완전 채움 보호)
-    # ===============================
-    sorted_indices = np.argsort(bubble_scores)[::-1]
+    return [], bubble_scores
 
-    selected = []
-    mean_score = np.mean(bubble_scores)
-
-    for idx in sorted_indices[:expected_count]:
-
-        top = bubble_scores[idx]
-        second = bubble_scores[sorted_indices[1]] if len(sorted_indices) > 1 else 0
-        gap = top - second
-
-        if (
-            top > MIN_PIXEL and
-            gap > MIN_GAP and
-            top > mean_score * MEAN_RATIO
-        ):
-            selected.append(str(idx + 1))
-
-    return selected, bubble_scores
 
 
 
