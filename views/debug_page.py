@@ -172,6 +172,13 @@ def show_debug_page():
             st.session_state.aligned_pages[idx] = aligned
 
         st.success("채점 완료!")
+		
+    # ===============================
+    # 채점 완료 후 화면 표시
+    # ===============================
+    if "aligned_pages" not in st.session_state:
+        return
+
 
     # ===============================
     # 페이지 이동 UI (← 3 / N →)
@@ -282,7 +289,6 @@ def show_debug_page():
 
 		# ===============================
 		# 한눈에 보이는 가로형 답 수정 표
-		# ===============================
 
 		import pandas as pd
 
@@ -339,6 +345,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
