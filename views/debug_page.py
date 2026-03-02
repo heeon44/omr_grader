@@ -236,12 +236,39 @@ def show_debug_page():
 
         is_correct = set(correct) == set(selected)
 
+        # ===============================
+        # 🔥 오답 문항 빨간 배경 표시
+        # ===============================
+        if not is_correct:
+            qx_ranges = layout.get("question_x_ranges", {})
+            qx = qx_ranges.get(col_index)
+
+            if qx:
+                overlay = debug_img.copy()
+                cv2.rectangle(
+                    overlay,
+                    (qx[0], y1),
+                    (qx[1], y2),
+                    (0, 0, 255),
+                    -1
+                )
+                debug_img = cv2.addWeighted(
+                    overlay, 0.25,
+                    debug_img, 0.75, 0
+                )
+
+        # ===============================
+        # 🔥 점수 계산
+        # ===============================
         if is_correct:
             total_score += scores.get(str(q), 1)
             for sec_id, sec in sections.items():
                 if q in sec.get("questions", []):
                     section_scores[sec_id] += scores.get(str(q), 1)
 
+        # ===============================
+        # 🔥 버블 색상 표시
+        # ===============================
         for i in range(5):
             if i + 1 >= len(x_bounds):
                 continue
@@ -249,11 +276,11 @@ def show_debug_page():
             bubble_id = str(i + 1)
 
             if bubble_id in correct and bubble_id in selected:
-                color = (0, 255, 0)        # 🟢 정답 일치
+                color = (0, 255, 0)      # 🟢 정답 일치
             elif bubble_id in correct:
-                color = (255, 0, 0)        # 🔵 정답
+                color = (255, 0, 0)      # 🔵 정답
             elif bubble_id in selected:
-                color = (0, 255, 255)      # 🟡 학생 선택
+                color = (0, 255, 255)    # 🟡 학생 선택
             else:
                 continue
 
@@ -278,6 +305,22 @@ def show_debug_page():
                 4
             )
 
+        # ===============================
+        # 🔥 문항 번호 표시 (Q1, Q2 ...)
+        # ===============================
+        qx_ranges = layout.get("question_x_ranges", {})
+        qx = qx_ranges.get(col_index)
+
+        if qx:
+            cv2.putText(
+                debug_img,
+                f"Q{q}",
+                (qx[0], y1 - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 0, 255),
+                2
+            )
     # =====================================================
     # 🔥 이미지 + 가로 5열 수정표
     # =====================================================
@@ -373,6 +416,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
