@@ -140,5 +140,3 @@ def detect_answer(template_gray, aligned_gray, x_bounds, y1, y2, expected_count)
     return selected, bubble_scores
 
 
-
-
