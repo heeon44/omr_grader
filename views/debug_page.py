@@ -95,6 +95,9 @@ def show_debug_page():
 
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
+    # =====================================================
+    # 🔥 채점 시작
+    # =====================================================
     if uploaded_pdf and st.button("채점 시작"):
 
         pdf_bytes = uploaded_pdf.read()
@@ -115,9 +118,9 @@ def show_debug_page():
             pages.append(img)
 
         # 세션 초기화
-        st.session_state.pages = pages
         st.session_state.answers = {}
         st.session_state.aligned_pages = {}
+        st.session_state.current_page = 0
         st.session_state.exam_name = exam_name
 
         # 템플릿 로딩
@@ -127,7 +130,7 @@ def show_debug_page():
 
         layout = exam["layout"]
 
-        # 🔥 자동 채점 먼저 전체 실행
+        # 🔥 전체 자동채점
         for idx, page_img in enumerate(pages):
 
             student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
@@ -137,7 +140,6 @@ def show_debug_page():
                 continue
 
             aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
-
             page_answers = {}
 
             for q in range(1, exam["num_questions"] + 1):
@@ -172,44 +174,28 @@ def show_debug_page():
             st.session_state.aligned_pages[idx] = aligned
 
         st.success("채점 완료!")
-		
-    # ===============================
-    # 채점 완료 후 화면
-    # ===============================
+        st.rerun()
+
+    # =====================================================
+    # 🔥 채점된 데이터 없으면 종료
+    # =====================================================
     if "aligned_pages" not in st.session_state:
         return
 
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = 0
-
+    # =====================================================
+    # 🔥 현재 페이지 선택
+    # =====================================================
     total_pages = len(st.session_state.aligned_pages)
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-
-    with col1:
-        if st.button("⬅"):
-            if st.session_state.current_page > 0:
-                st.session_state.current_page -= 1
-                st.rerun()
-
-    with col2:
-        st.markdown(
-            f"<h3 style='text-align:center'>"
-            f"{st.session_state.current_page+1} / {total_pages}"
-            f"</h3>",
-            unsafe_allow_html=True
-        )
-
-    with col3:
-        if st.button("➡"):
-            if st.session_state.current_page < total_pages - 1:
-                st.session_state.current_page += 1
-                st.rerun()
+    if st.session_state.current_page >= total_pages:
+        st.session_state.current_page = 0
 
     selected_page = st.session_state.current_page
 
     aligned = st.session_state.aligned_pages[selected_page]
-    page_answers = st.session_state.answers[selected_page]
+
+    # 🔥 항상 최신 수정값 사용
+    page_answers = st.session_state.answers.get(selected_page, {})
 
     layout = exam["layout"]
     sections = exam.get("sections", {})
@@ -219,6 +205,9 @@ def show_debug_page():
     total_score = 0
     section_scores = {sec_id: 0 for sec_id in sections}
 
+    # =====================================================
+    # 🔥 수정값 기준으로 이미지 & 점수 계산
+    # =====================================================
     for q in range(1, exam["num_questions"] + 1):
 
         if str(q) not in layout.get("y_ranges", {}):
@@ -251,11 +240,11 @@ def show_debug_page():
             bubble_id = str(i + 1)
 
             if bubble_id in correct and bubble_id in selected:
-                color = (0, 255, 0)
+                color = (0, 255, 0)        # 🟢 정답 일치
             elif bubble_id in correct:
-                color = (255, 0, 0)
+                color = (255, 0, 0)        # 🔵 정답
             elif bubble_id in selected:
-                color = (0, 255, 255)
+                color = (0, 255, 255)      # 🟡 학생 선택
             else:
                 continue
 
@@ -280,11 +269,39 @@ def show_debug_page():
                 4
             )
 
-    st.image(debug_img, channels="BGR")
+    # =====================================================
+    # 🔥 이미지 출력 (크기 축소)
+    # =====================================================
+    st.image(debug_img, channels="BGR", width=900)
 
-    # ===============================
-    # 가로형 답 수정 표
-    # ===============================
+    # =====================================================
+    # 🔥 페이지 이동 버튼 (이미지 아래)
+    # =====================================================
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col1:
+        if st.button("⬅", key="prev_btn"):
+            if st.session_state.current_page > 0:
+                st.session_state.current_page -= 1
+                st.rerun()
+
+    with col2:
+        st.markdown(
+            f"<h4 style='text-align:center'>"
+            f"{selected_page+1} / {total_pages}"
+            f"</h4>",
+            unsafe_allow_html=True
+        )
+
+    with col3:
+        if st.button("➡", key="next_btn"):
+            if st.session_state.current_page < total_pages - 1:
+                st.session_state.current_page += 1
+                st.rerun()
+
+    # =====================================================
+    # 🔥 가로형 한눈에 답 수정 표
+    # =====================================================
     import pandas as pd
 
     st.markdown("### 📝 문항별 답 수정")
@@ -318,9 +335,9 @@ def show_debug_page():
         st.session_state.answers[selected_page] = new_answers
         st.rerun()
 
-    # ===============================
-    # 점수 표시
-    # ===============================
+    # =====================================================
+    # 🔥 점수 표시 (수정값 기준)
+    # =====================================================
     cols = st.columns(len(section_scores) + 1)
 
     i = 0
@@ -339,11 +356,3 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
-
-
-
-
-
-
-
-
