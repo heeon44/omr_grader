@@ -409,40 +409,34 @@ def show_debug_page():
     # 🔥 페이지 이동 버튼 (완전 양끝 정렬)
     # =====================================================
 
-    nav_left, nav_center, nav_right = st.columns([1, 8, 1])
+nav_left, nav_center = st.columns([1,7])
 
-    with nav_left:
-        if st.button("⬅", key=f"prev_btn_{selected_page}"):
-            if st.session_state.current_page > 0:
-                st.session_state.current_page -= 1
-                st.rerun()
+with nav_left:
+    if st.button("⬅", key=f"prev_btn_{selected_page}"):
+        if st.session_state.current_page > 0:
+            st.session_state.current_page -= 1
+            st.rerun()
 
-    with nav_center:
+with nav_center:
 
-        col_page, col_total = st.columns([0.25,2])
+    col_page, col_total, col_next = st.columns([0.4,2,0.6])
 
-        page_input = col_page.text_input(
-            "",
-            value=str(st.session_state.current_page + 1),
-            key=f"page_input_{selected_page}",
-            label_visibility="collapsed"
-        )
+    page_input = col_page.text_input(
+        "",
+        value=str(st.session_state.current_page + 1),
+        key=f"page_input_{selected_page}",
+        label_visibility="collapsed"
+    )
 
-        col_total.markdown(
-            f"<h4 style='margin-top:5px;'>/ {total_pages}</h4>",
-            unsafe_allow_html=True
-        )
+    col_total.markdown(
+        f"<h4 style='margin-top:5px;'>/ {total_pages}</h4>",
+        unsafe_allow_html=True
+    )
 
-        # 페이지 입력 처리
-        if page_input.isdigit():
-
-            page_num = int(page_input)
-
-            if 1 <= page_num <= total_pages:
-                if page_num - 1 != st.session_state.current_page:
-                    st.session_state.current_page = page_num - 1
-                    st.rerun()
-
+    if col_next.button("➡", key=f"next_btn_{selected_page}"):
+        if st.session_state.current_page < total_pages - 1:
+            st.session_state.current_page += 1
+            st.rerun()
     with nav_right:
         if st.button("➡", key=f"next_btn_{selected_page}"):
             if st.session_state.current_page < total_pages - 1:
@@ -489,6 +483,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
