@@ -419,32 +419,29 @@ def show_debug_page():
 
     with nav_center:
 
-        st.markdown(
-            f"<h4 style='text-align:center;'>"
-            f"{selected_page+1} / {total_pages}"
-            f"</h4>",
-            unsafe_allow_html=True
-        )
+        col_page, col_total = st.columns([1,2])
 
-        # ===============================
-        # 🔥 작은 페이지 이동 입력
-        # ===============================
-
-        col_jump1, col_jump2 = st.columns([1,1])
-
-        target_page = col_jump1.number_input(
+        page_input = col_page.text_input(
             "",
-            min_value=1,
-            max_value=total_pages,
-            value=st.session_state.current_page + 1,
-            step=1,
-            key=f"jump_page_{selected_page}",
+            value=str(st.session_state.current_page + 1),
+            key=f"page_input_{selected_page}",
             label_visibility="collapsed"
         )
 
-        if col_jump2.button("이동", key=f"jump_btn_{selected_page}"):
-            st.session_state.current_page = target_page - 1
-            st.rerun()
+        col_total.markdown(
+            f"<h4 style='margin-top:5px;'>/ {total_pages}</h4>",
+            unsafe_allow_html=True
+        )
+
+        # 페이지 입력 처리
+        if page_input.isdigit():
+
+            page_num = int(page_input)
+
+            if 1 <= page_num <= total_pages:
+                if page_num - 1 != st.session_state.current_page:
+                    st.session_state.current_page = page_num - 1
+                    st.rerun()
 
     with nav_right:
         if st.button("➡", key=f"next_btn_{selected_page}"):
@@ -492,6 +489,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
