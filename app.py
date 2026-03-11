@@ -121,10 +121,10 @@ elif menu == "템플릿 관리":
 
 elif menu == "채점 요약(Excel)":
 
-     if st.session_state.role != "admin":
+    if st.session_state.role != "admin":
         st.error("❌ 관리자만 접근 가능합니다.")
         st.stop()
-         
+
     show_grading_page()
 
 
@@ -137,12 +137,11 @@ elif menu == "답안 채점(JPG, PNG)":
     if st.session_state.role != "admin":
         st.error("❌ 관리자만 접근 가능합니다.")
         st.stop()
-        
+
     show_image_debug_page()
 
 
 elif menu == "시험 분석":
     show_exam_analysis_page()
-
 
 
