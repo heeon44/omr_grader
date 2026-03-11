@@ -179,15 +179,13 @@ def show_exam_analysis_page():
 
     for q, counts in graphs.items():
 
-        fig, ax = plt.subplots()
+        st.markdown(f"**{q}**")
 
-        ax.bar(counts.keys(), counts.values())
+        chart_data = pd.DataFrame(
+            {"선택수": counts}
+        )
 
-        ax.set_title(q)
-        ax.set_xlabel("선지")
-        ax.set_ylabel("선택 수")
-
-        st.pyplot(fig)
+        st.bar_chart(chart_data)
 
     # ---------------------------------
     # Excel 다운로드
