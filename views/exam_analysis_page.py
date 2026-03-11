@@ -103,7 +103,7 @@ def show_exam_analysis_page():
 
         for q_num in sec.get("questions", []):
 
-            question_area_map[f"Q{q_num}"] = area_name
+            question_area_map[int(q_num)] = area_name
 
     areas = sorted(set(question_area_map.values()))
 
@@ -122,7 +122,7 @@ def show_exam_analysis_page():
         for q in question_cols:
 
             q_num = q.replace("Q", "")
-            area = question_area_map.get(q, "기타")
+            area = question_area_map.get(int(q_num), "기타")
 
             correct = exam["answers"][q_num]["answer"]
 
