@@ -172,7 +172,7 @@ def show_exam_analysis_page():
 
         rate_map[q] = correct_rate
 
-        row["정답률"] = f"{correct_rate:.1f}% ({correct_count}명)"
+        row["정답률"] = f"{correct_rate:.1f}%"
         row["오답률"] = f"{wrong_rate:.1f}%"
 
         row["난이도"] = get_difficulty(correct_rate)
@@ -190,7 +190,7 @@ def show_exam_analysis_page():
 
             distractor_rate = (distractor_count / total_students) * 100
 
-            row["매력적 오답"] = f"{distractor} ({distractor_rate:.1f}%/{distractor_count}명)"
+            row["매력적 오답"] = distractor
 
         else:
             row["매력적 오답"] = ""
