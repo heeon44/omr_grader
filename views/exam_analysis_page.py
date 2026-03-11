@@ -121,16 +121,14 @@ def show_exam_analysis_page():
     student_scores = []
     area_scores_list = []
 
-    for idx, row in data.iterrows():
+	for idx, row in data.iterrows():
 
-        score = 0
-        area_scores = {area: 0 for area in areas}
+		score = 0
+		area_scores = {area: 0 for area in areas}
 
 		for q in question_cols:
 
 			q_num = int(str(q).replace("Q", "").strip())
-			area = question_area_map.get(q_num, "기타")
-
 			correct = exam["answers"][str(q_num)]["answer"]
 
 			if not isinstance(correct, list):
@@ -138,14 +136,14 @@ def show_exam_analysis_page():
 
 			correct = [normalize_answer(c) for c in correct]
 
-			ans = normalize_answer(row[q])
+				ans = normalize_answer(row[q])
 
-			if ans in correct:
-				score += 1
-				area_scores[area] += 1
+				if ans in correct:
+					score += 1
+					area_scores[area] += 1
 
-        student_scores.append(score)
-        area_scores_list.append(area_scores)
+		student_scores.append(score)
+		area_scores_list.append(area_scores)
 
     data["총점"] = student_scores
 
