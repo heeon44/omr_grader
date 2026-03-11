@@ -124,7 +124,7 @@ def show_exam_analysis_page():
     data["총점"] = student_scores
 
     # ------------------------------
-    # 상위 / 하위 그룹 분리
+    # 상위 / 하위 그룹
     # ------------------------------
 
     sorted_data = data.sort_values("총점", ascending=False)
@@ -184,14 +184,8 @@ def show_exam_analysis_page():
         wrong_counts = counts.drop(correct, errors="ignore")
 
         if len(wrong_counts) > 0:
-
             distractor = wrong_counts.idxmax()
-            distractor_count = wrong_counts.max()
-
-            distractor_rate = (distractor_count / total_students) * 100
-
             row["매력적 오답"] = distractor
-
         else:
             row["매력적 오답"] = ""
 
@@ -261,23 +255,33 @@ def show_exam_analysis_page():
     st.dataframe(result_df, use_container_width=True)
 
     # ------------------------------
-    # 시험 요약
+    # 시험 요약 + TOP5
     # ------------------------------
 
-    hardest_q = min(rate_map, key=rate_map.get)
-    easiest_q = max(rate_map, key=rate_map.get)
+    rate_series = pd.Series(rate_map)
 
-    avg_rate = sum(rate_map.values()) / len(rate_map)
+    hardest = rate_series.sort_values().head(5)
+    easiest = rate_series.sort_values(ascending=False).head(5)
 
-    summary_df = pd.DataFrame({
-        "항목": ["응시 인원", "평균 정답률", "가장 어려운 문제", "가장 쉬운 문제"],
-        "값": [
-            total_students,
-            f"{avg_rate:.1f}%",
-            hardest_q,
-            easiest_q
-        ]
-    })
+    avg_rate = rate_series.mean()
+
+    summary_rows = [
+        ["응시 인원", total_students],
+        ["평균 정답률", f"{avg_rate:.1f}%"],
+        ["", ""],
+        ["어려운 문제 TOP5", ""],
+    ]
+
+    for q, r in hardest.items():
+        summary_rows.append([q, f"{r:.1f}%"])
+
+    summary_rows.append(["", ""])
+    summary_rows.append(["쉬운 문제 TOP5", ""])
+
+    for q, r in easiest.items():
+        summary_rows.append([q, f"{r:.1f}%"])
+
+    summary_df = pd.DataFrame(summary_rows, columns=["항목", "값"])
 
     # ------------------------------
     # Excel 저장
@@ -294,41 +298,13 @@ def show_exam_analysis_page():
         worksheet = writer.sheets["문항분석"]
 
         # ------------------------------
-        # 스타일 포맷
+        # 헤더 스타일
         # ------------------------------
 
         header_format = workbook.add_format({
             "bold": True,
             "align": "center"
         })
-
-        correct_format = workbook.add_format({
-            "bg_color": "#DCE6F1"
-        })
-
-        distractor_format = workbook.add_format({
-            "bg_color": "#F8CBAD"
-        })
-
-        easy_format = workbook.add_format({
-            "bg_color": "#E2EFDA"
-        })
-
-        hard_format = workbook.add_format({
-            "bg_color": "#FCE4D6"
-        })
-
-        good_discrimination = workbook.add_format({
-            "bg_color": "#D9E1F2"
-        })
-
-        bad_discrimination = workbook.add_format({
-            "bg_color": "#F8CBAD"
-        })
-
-        # ------------------------------
-        # 헤더 스타일
-        # ------------------------------
 
         for col_num, value in enumerate(result_df.columns.values):
 
@@ -343,10 +319,24 @@ def show_exam_analysis_page():
         # 열 너비
         # ------------------------------
 
-        worksheet.set_column(0, 0, 6)
-        worksheet.set_column(1, 1, 8)
-        worksheet.set_column(2, 4, 10)
-        worksheet.set_column(5, 10, 14)
+        worksheet.set_column(0, 0, 6)   # 문항
+        worksheet.set_column(1, 1, 8)   # 정답
+        worksheet.set_column(2, 4, 10)  # 정답률 ~ 매력적오답
+        worksheet.set_column(5, 10, 14) # 선지 분포
+
+        # ------------------------------
+        # 히트맵 색
+        # ------------------------------
+
+        heatmap_90 = workbook.add_format({"bg_color": "#BDD7EE"})
+        heatmap_70 = workbook.add_format({"bg_color": "#C6E0B4"})
+        heatmap_50 = workbook.add_format({"bg_color": "#FFE699"})
+        heatmap_30 = workbook.add_format({"bg_color": "#F8CBAD"})
+        heatmap_10 = workbook.add_format({"bg_color": "#F4B084"})
+
+        distractor_format = workbook.add_format({
+            "bg_color": "#F8CBAD"
+        })
 
         # ------------------------------
         # 셀 색칠
@@ -363,69 +353,24 @@ def show_exam_analysis_page():
 
                 if choice in correct_choices:
 
-                    worksheet.write(
-                        row_idx + 1,
-                        col_idx,
-                        row[choice],
-                        correct_format
-                    )
+                    rate = rate_map[row["문항"]]
+
+                    if rate >= 90:
+                        fmt = heatmap_90
+                    elif rate >= 70:
+                        fmt = heatmap_70
+                    elif rate >= 50:
+                        fmt = heatmap_50
+                    elif rate >= 30:
+                        fmt = heatmap_30
+                    else:
+                        fmt = heatmap_10
+
+                    worksheet.write(row_idx + 1, col_idx, row[choice], fmt)
 
                 elif choice == distractor:
 
-                    worksheet.write(
-                        row_idx + 1,
-                        col_idx,
-                        row[choice],
-                        distractor_format
-                    )
-
-            # ------------------------------
-            # 난이도 색상
-            # ------------------------------
-
-            diff_col = result_df.columns.get_loc("난이도")
-
-            if row["난이도"] == "쉬움":
-
-                worksheet.write(
-                    row_idx + 1,
-                    diff_col,
-                    row["난이도"],
-                    easy_format
-                )
-
-            elif row["난이도"] == "어려움":
-
-                worksheet.write(
-                    row_idx + 1,
-                    diff_col,
-                    row["난이도"],
-                    hard_format
-                )
-
-            # ------------------------------
-            # 변별도 색상
-            # ------------------------------
-
-            disc_col = result_df.columns.get_loc("변별도 평가")
-
-            if row["변별도 평가"] in ["매우 좋음", "좋음"]:
-
-                worksheet.write(
-                    row_idx + 1,
-                    disc_col,
-                    row["변별도 평가"],
-                    good_discrimination
-                )
-
-            elif row["변별도 평가"] == "나쁨":
-
-                worksheet.write(
-                    row_idx + 1,
-                    disc_col,
-                    row["변별도 평가"],
-                    bad_discrimination
-                )
+                    worksheet.write(row_idx + 1, col_idx, row[choice], distractor_format)
 
         # ------------------------------
         # 그래프 시트
@@ -439,12 +384,7 @@ def show_exam_analysis_page():
 
             chart_sheet.write(0, col, q)
 
-            chart_sheet.write_column(
-                1,
-                col,
-                ["1", "2", "3", "4", "5"]
-            )
-
+            chart_sheet.write_column(1, col, ["1", "2", "3", "4", "5"])
             chart_sheet.write_column(
                 1,
                 col + 1,
@@ -453,33 +393,25 @@ def show_exam_analysis_page():
                     counts.get("2", 0),
                     counts.get("3", 0),
                     counts.get("4", 0),
-                    counts.get("5", 0)
-                ]
+                    counts.get("5", 0),
+                ],
             )
 
-            chart = workbook.add_chart({
-                "type": "column"
-            })
+            chart = workbook.add_chart({"type": "column"})
 
             chart.add_series({
                 "categories": ["선지그래프", 1, col, 5, col],
                 "values": ["선지그래프", 1, col + 1, 5, col + 1],
-                "name": q
+                "name": q,
             })
 
-            chart.set_title({
-                "name": q
-            })
+            chart.set_title({"name": q})
 
-            chart_sheet.insert_chart(
-                7,
-                col,
-                chart
-            )
+            chart_sheet.insert_chart(7, col, chart)
 
     st.download_button(
         "📥 분석 결과 Excel 다운로드",
         output.getvalue(),
         f"{exam_name}_analysis.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
