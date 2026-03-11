@@ -410,7 +410,14 @@ def show_debug_page():
     # =====================================================
 
     nav_left, nav_center, nav_right = st.columns([1, 6, 1])
-        with nav_center:
+
+    with nav_left:
+        if st.button("⬅", key="prev_btn"):
+            if st.session_state.current_page > 0:
+                st.session_state.current_page -= 1
+                st.rerun()
+
+    with nav_center:
 
         st.markdown(
             f"<h4 style='text-align:center;'>"
@@ -435,23 +442,8 @@ def show_debug_page():
         )
 
         if col_jump2.button("이동", key="jump_btn"):
-
             st.session_state.current_page = target_page - 1
             st.rerun()
-
-    with nav_left:
-        if st.button("⬅", key="prev_btn"):
-            if st.session_state.current_page > 0:
-                st.session_state.current_page -= 1
-                st.rerun()
-
-    with nav_center:
-        st.markdown(
-            f"<h4 style='text-align:center;'>"
-            f"{selected_page+1} / {total_pages}"
-            f"</h4>",
-            unsafe_allow_html=True
-        )
 
     with nav_right:
         if st.button("➡", key="next_btn"):
@@ -499,6 +491,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
