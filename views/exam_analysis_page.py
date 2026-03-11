@@ -129,7 +129,7 @@ def show_exam_analysis_page():
 		for q in question_cols:
 
 			q_num = int(str(q).replace("Q", "").strip())
-			correct = exam["answers"][str(q_num)]["answer"]
+			area = question_area_map.get(q_num, "기타")
 
 			correct = exam["answers"][str(q_num)]["answer"]
 
@@ -173,9 +173,8 @@ def show_exam_analysis_page():
 
     for q in question_cols:
 
-        q_num = q.replace("Q", "")
-
-        correct = exam["answers"][q_num]["answer"]
+			q_num = int(str(q).replace("Q", "").strip())
+			correct = exam["answers"][str(q_num)]["answer"]
 
         if not isinstance(correct, list):
             correct = [correct]
