@@ -75,10 +75,6 @@ def show_exam_analysis_page():
         st.info("Excel 파일을 업로드하세요.")
         return
 
-    # ------------------------------
-    # Excel 병합
-    # ------------------------------
-
     dfs = []
 
     for file in uploaded_files:
@@ -177,10 +173,6 @@ def show_exam_analysis_page():
 
         row["난이도"] = get_difficulty(correct_rate)
 
-        # ------------------------------
-        # 매력적 오답
-        # ------------------------------
-
         wrong_counts = counts.drop(correct, errors="ignore")
 
         if len(wrong_counts) > 0:
@@ -188,10 +180,6 @@ def show_exam_analysis_page():
             row["매력적 오답"] = distractor
         else:
             row["매력적 오답"] = ""
-
-        # ------------------------------
-        # 선지 분포
-        # ------------------------------
 
         choice_counts = {}
 
@@ -206,10 +194,6 @@ def show_exam_analysis_page():
             choice_counts[choice] = count
 
         graphs[q] = choice_counts
-
-        # ------------------------------
-        # 변별도 계산
-        # ------------------------------
 
         top_correct = 0
         bottom_correct = 0
@@ -240,23 +224,13 @@ def show_exam_analysis_page():
 
     result_df = pd.DataFrame(results)
 
-    # ------------------------------
-    # 문항 순 정렬
-    # ------------------------------
-
     result_df["문항번호"] = result_df["문항"].str.replace("Q", "").astype(int)
-
     result_df = result_df.sort_values("문항번호")
-
     result_df = result_df.drop(columns=["문항번호"])
 
     st.subheader("📋 문항 분석 결과")
 
     st.dataframe(result_df, use_container_width=True)
-
-    # ------------------------------
-    # 시험 요약 + TOP5
-    # ------------------------------
 
     rate_series = pd.Series(rate_map)
 
@@ -283,10 +257,6 @@ def show_exam_analysis_page():
 
     summary_df = pd.DataFrame(summary_rows, columns=["항목", "값"])
 
-    # ------------------------------
-    # Excel 저장
-    # ------------------------------
-
     output = io.BytesIO()
 
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
@@ -298,64 +268,10 @@ def show_exam_analysis_page():
         worksheet = writer.sheets["문항분석"]
         summary_sheet = writer.sheets["시험요약"]
 
-        # ------------------------------
-        # 히트맵 범례 (문항분석 시트)
-        # ------------------------------
-
-        legend_row = len(result_df) + 3
-
-        worksheet.write(legend_row, 0, "색상 의미 (정답 선지 히트맵)")
-
-        worksheet.write(legend_row + 1, 0, "90% 이상 : 매우 쉬운 문제", heatmap_90)
-        worksheet.write(legend_row + 2, 0, "70% 이상 : 쉬운 문제", heatmap_70)
-        worksheet.write(legend_row + 3, 0, "50% 이상 : 적정 난이도", heatmap_50)
-        worksheet.write(legend_row + 4, 0, "30% 이상 : 어려운 문제", heatmap_30)
-        worksheet.write(legend_row + 5, 0, "30% 미만 : 매우 어려운 문제", heatmap_10)
-
-        worksheet.write(legend_row + 7, 0, "매력적 오답", distractor_format)
-
-        # ------------------------------
-        # 시험요약 설명
-        # ------------------------------
-
-        start_row = len(summary_df) + 2
-
-        summary_sheet.write(
-            start_row + 7,
-            0,
-            "※ TOP5 옆 % 는 정답률을 의미합니다."
-        )
-
-        # ------------------------------
-        # 헤더 스타일
-        # ------------------------------
-
         header_format = workbook.add_format({
             "bold": True,
             "align": "center"
         })
-
-        for col_num, value in enumerate(result_df.columns.values):
-
-            worksheet.write(
-                0,
-                col_num,
-                value,
-                header_format
-            )
-
-        # ------------------------------
-        # 열 너비
-        # ------------------------------
-
-        worksheet.set_column(0, 0, 6)   # 문항
-        worksheet.set_column(1, 1, 8)   # 정답
-        worksheet.set_column(2, 4, 10)  # 정답률 ~ 매력적오답
-        worksheet.set_column(5, 10, 14) # 선지 분포
-
-        # ------------------------------
-        # 히트맵 색
-        # ------------------------------
 
         heatmap_90 = workbook.add_format({"bg_color": "#BDD7EE"})
         heatmap_70 = workbook.add_format({"bg_color": "#C6E0B4"})
@@ -367,9 +283,32 @@ def show_exam_analysis_page():
             "bg_color": "#F8CBAD"
         })
 
-        # ------------------------------
-        # 셀 색칠
-        # ------------------------------
+        for col_num, value in enumerate(result_df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+
+        worksheet.set_column(0, 0, 6)
+        worksheet.set_column(1, 1, 8)
+        worksheet.set_column(2, 4, 10)
+        worksheet.set_column(5, 10, 14)
+
+        legend_row = len(result_df) + 3
+
+        worksheet.write(legend_row, 0, "색상 의미 (정답 선지 히트맵)")
+        worksheet.write(legend_row + 1, 0, "90% 이상 : 매우 쉬운 문제", heatmap_90)
+        worksheet.write(legend_row + 2, 0, "70% 이상 : 쉬운 문제", heatmap_70)
+        worksheet.write(legend_row + 3, 0, "50% 이상 : 적정 난이도", heatmap_50)
+        worksheet.write(legend_row + 4, 0, "30% 이상 : 어려운 문제", heatmap_30)
+        worksheet.write(legend_row + 5, 0, "30% 미만 : 매우 어려운 문제", heatmap_10)
+
+        worksheet.write(legend_row + 7, 0, "매력적 오답", distractor_format)
+
+        start_row = len(summary_df) + 2
+
+        summary_sheet.write(
+            start_row + 7,
+            0,
+            "※ TOP5 옆 % 는 정답률을 의미합니다."
+        )
 
         for row_idx, row in result_df.iterrows():
 
@@ -400,10 +339,6 @@ def show_exam_analysis_page():
                 elif choice == distractor:
 
                     worksheet.write(row_idx + 1, col_idx, row[choice], distractor_format)
-
-        # ------------------------------
-        # 그래프 시트
-        # ------------------------------
 
         chart_sheet = workbook.add_worksheet("선지그래프")
 
