@@ -1,11 +1,16 @@
 import streamlit as st
 import pandas as pd
 import io
+import matplotlib.pyplot as plt
 
 from core.database import load_exams
 
 
+# ---------------------------------
+# 값 정규화
+# ---------------------------------
 def normalize_answer(v):
+
     if pd.isna(v):
         return None
 
@@ -17,6 +22,22 @@ def normalize_answer(v):
     return v.strip()
 
 
+# ---------------------------------
+# 난이도 계산
+# ---------------------------------
+def get_difficulty(rate):
+
+    if rate < 30:
+        return "어려움"
+    elif rate < 70:
+        return "보통"
+    else:
+        return "쉬움"
+
+
+# ---------------------------------
+# 페이지
+# ---------------------------------
 def show_exam_analysis_page():
 
     st.header("📊 시험 분석")
@@ -41,7 +62,7 @@ def show_exam_analysis_page():
         return
 
     # ---------------------------------
-    # Excel 여러개 병합
+    # Excel 병합
     # ---------------------------------
 
     dfs = []
@@ -54,9 +75,12 @@ def show_exam_analysis_page():
 
     total_students = len(data)
 
+    st.success(f"총 응시 인원: {total_students}명")
+
     question_cols = [c for c in data.columns if c.startswith("Q")]
 
     results = []
+    graphs = {}
 
     # ---------------------------------
     # 문항 분석
@@ -85,12 +109,17 @@ def show_exam_analysis_page():
         correct_count = counts.get(correct, 0)
 
         correct_rate = (correct_count / total_students) * 100
+        wrong_rate = 100 - correct_rate
 
         row["정답률"] = f"{correct_rate:.1f}% ({correct_count}명)"
+        row["오답률"] = f"{wrong_rate:.1f}%"
 
-        # -----------------------------
+        # 난이도
+        row["난이도"] = get_difficulty(correct_rate)
+
+        # ---------------------------------
         # 매력적 오답
-        # -----------------------------
+        # ---------------------------------
 
         wrong_counts = counts.drop(correct, errors="ignore")
 
@@ -106,9 +135,11 @@ def show_exam_analysis_page():
         else:
             row["매력적 오답"] = ""
 
-        # -----------------------------
+        # ---------------------------------
         # 선지 분포
-        # -----------------------------
+        # ---------------------------------
+
+        choice_counts = {}
 
         for choice in ["1", "2", "3", "4", "5"]:
 
@@ -118,13 +149,45 @@ def show_exam_analysis_page():
 
             row[choice] = f"{rate:.1f}% ({count}명)"
 
+            choice_counts[choice] = count
+
+        graphs[q] = choice_counts
+
         results.append(row)
 
     result_df = pd.DataFrame(results)
 
-    st.subheader("문항 분석 결과")
+    # ---------------------------------
+    # 정답률 기준 정렬
+    # ---------------------------------
+
+    result_df["정답률_num"] = result_df["정답률"].str.extract(r'(\d+\.?\d*)').astype(float)
+
+    result_df = result_df.sort_values("정답률_num")
+
+    result_df = result_df.drop(columns=["정답률_num"])
+
+    st.subheader("📋 문항 분석 결과")
 
     st.dataframe(result_df, use_container_width=True)
+
+    # ---------------------------------
+    # 그래프 표시
+    # ---------------------------------
+
+    st.subheader("📊 선지 분포 그래프")
+
+    for q, counts in graphs.items():
+
+        fig, ax = plt.subplots()
+
+        ax.bar(counts.keys(), counts.values())
+
+        ax.set_title(q)
+        ax.set_xlabel("선지")
+        ax.set_ylabel("선택 수")
+
+        st.pyplot(fig)
 
     # ---------------------------------
     # Excel 다운로드
