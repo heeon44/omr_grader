@@ -431,24 +431,24 @@ def show_debug_page():
                 st.session_state.current_page += 1
                 st.rerun()
 
-# =====================================================
-# 🔥 Excel 저장 버튼
-# =====================================================
+    # =====================================================
+    # 🔥 Excel 저장 버튼
+    # =====================================================
 
-st.markdown("---")
+    st.markdown("---")
 
-excel_data = generate_answer_excel()
+    excel_data = generate_answer_excel()
 
-if excel_data:
+    if excel_data:
 
-    excel_bytes, exam_name = excel_data
+        excel_bytes, exam_name = excel_data
 
-    st.download_button(
-        "📥 답안 Excel 저장",
-        excel_bytes,
-        file_name=f"{exam_name}_answers.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        st.download_button(
+            "📥 답안 Excel 저장",
+            excel_bytes,
+            file_name=f"{exam_name}_answers.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
     # =====================================================
     # 🔥 점수 표시 (수정값 기준)
@@ -471,6 +471,7 @@ if excel_data:
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
