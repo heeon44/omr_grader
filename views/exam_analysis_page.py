@@ -267,19 +267,19 @@ def show_exam_analysis_page():
 
     area_averages = {}
 
-	for area in areas:
-  	  area_averages[area] = data[f"{area}_점수"].mean()
+    for area in areas:
+        area_averages[area] = data[f"{area}_점수"].mean()
 
     summary_rows = [
-    	["응시 인원", total_students],
-    	["시험 평균 점수", f"{exam_average:.2f}"],
-    	["평균 정답률", f"{avg_rate:.1f}%"],
-    	["", ""],
-    	["영역별 평균 점수", ""],
+        ["응시 인원", total_students],
+        ["시험 평균 점수", f"{exam_average:.2f}"],
+        ["평균 정답률", f"{avg_rate:.1f}%"],
+        ["", ""],
+        ["영역별 평균 점수", ""],
     ]
 
     for area, avg in area_averages.items():
-    	summary_rows.append([area, f"{avg:.2f}"])
+        summary_rows.append([area, f"{avg:.2f}"])
 
     summary_rows.append(["", ""])
     summary_rows.append(["어려운 문제 TOP5", ""])
