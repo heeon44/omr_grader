@@ -291,6 +291,146 @@ def show_exam_analysis_page():
         summary_df.to_excel(writer, sheet_name="시험요약", index=False)
 
         workbook = writer.book
+        worksheet = writer.sheets["문항분석"]
+
+        # ------------------------------
+        # 스타일 포맷
+        # ------------------------------
+
+        header_format = workbook.add_format({
+            "bold": True,
+            "align": "center"
+        })
+
+        correct_format = workbook.add_format({
+            "bg_color": "#DCE6F1"
+        })
+
+        distractor_format = workbook.add_format({
+            "bg_color": "#F8CBAD"
+        })
+
+        easy_format = workbook.add_format({
+            "bg_color": "#E2EFDA"
+        })
+
+        hard_format = workbook.add_format({
+            "bg_color": "#FCE4D6"
+        })
+
+        good_discrimination = workbook.add_format({
+            "bg_color": "#D9E1F2"
+        })
+
+        bad_discrimination = workbook.add_format({
+            "bg_color": "#F8CBAD"
+        })
+
+        # ------------------------------
+        # 헤더 스타일
+        # ------------------------------
+
+        for col_num, value in enumerate(result_df.columns.values):
+
+            worksheet.write(
+                0,
+                col_num,
+                value,
+                header_format
+            )
+
+        # ------------------------------
+        # 열 너비
+        # ------------------------------
+
+        worksheet.set_column(0, 0, 6)
+        worksheet.set_column(1, 1, 8)
+        worksheet.set_column(2, 4, 10)
+        worksheet.set_column(5, 10, 14)
+
+        # ------------------------------
+        # 셀 색칠
+        # ------------------------------
+
+        for row_idx, row in result_df.iterrows():
+
+            correct_choices = str(row["정답"]).split(",")
+            distractor = str(row["매력적 오답"]).strip()
+
+            for choice in ["1", "2", "3", "4", "5"]:
+
+                col_idx = result_df.columns.get_loc(choice)
+
+                if choice in correct_choices:
+
+                    worksheet.write(
+                        row_idx + 1,
+                        col_idx,
+                        row[choice],
+                        correct_format
+                    )
+
+                elif choice == distractor:
+
+                    worksheet.write(
+                        row_idx + 1,
+                        col_idx,
+                        row[choice],
+                        distractor_format
+                    )
+
+            # ------------------------------
+            # 난이도 색상
+            # ------------------------------
+
+            diff_col = result_df.columns.get_loc("난이도")
+
+            if row["난이도"] == "쉬움":
+
+                worksheet.write(
+                    row_idx + 1,
+                    diff_col,
+                    row["난이도"],
+                    easy_format
+                )
+
+            elif row["난이도"] == "어려움":
+
+                worksheet.write(
+                    row_idx + 1,
+                    diff_col,
+                    row["난이도"],
+                    hard_format
+                )
+
+            # ------------------------------
+            # 변별도 색상
+            # ------------------------------
+
+            disc_col = result_df.columns.get_loc("변별도 평가")
+
+            if row["변별도 평가"] in ["매우 좋음", "좋음"]:
+
+                worksheet.write(
+                    row_idx + 1,
+                    disc_col,
+                    row["변별도 평가"],
+                    good_discrimination
+                )
+
+            elif row["변별도 평가"] == "나쁨":
+
+                worksheet.write(
+                    row_idx + 1,
+                    disc_col,
+                    row["변별도 평가"],
+                    bad_discrimination
+                )
+
+        # ------------------------------
+        # 그래프 시트
+        # ------------------------------
+
         chart_sheet = workbook.add_worksheet("선지그래프")
 
         for i, (q, counts) in enumerate(graphs.items()):
@@ -299,16 +439,27 @@ def show_exam_analysis_page():
 
             chart_sheet.write(0, col, q)
 
-            chart_sheet.write_column(1, col, ["1", "2", "3", "4", "5"])
-            chart_sheet.write_column(1, col + 1, [
-                counts.get("1", 0),
-                counts.get("2", 0),
-                counts.get("3", 0),
-                counts.get("4", 0),
-                counts.get("5", 0)
-            ])
+            chart_sheet.write_column(
+                1,
+                col,
+                ["1", "2", "3", "4", "5"]
+            )
 
-            chart = workbook.add_chart({"type": "column"})
+            chart_sheet.write_column(
+                1,
+                col + 1,
+                [
+                    counts.get("1", 0),
+                    counts.get("2", 0),
+                    counts.get("3", 0),
+                    counts.get("4", 0),
+                    counts.get("5", 0)
+                ]
+            )
+
+            chart = workbook.add_chart({
+                "type": "column"
+            })
 
             chart.add_series({
                 "categories": ["선지그래프", 1, col, 5, col],
@@ -316,9 +467,15 @@ def show_exam_analysis_page():
                 "name": q
             })
 
-            chart.set_title({"name": q})
+            chart.set_title({
+                "name": q
+            })
 
-            chart_sheet.insert_chart(7, col, chart)
+            chart_sheet.insert_chart(
+                7,
+                col,
+                chart
+            )
 
     st.download_button(
         "📥 분석 결과 Excel 다운로드",
