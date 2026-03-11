@@ -427,6 +427,26 @@ def show_debug_page():
         )
 
         # ===============================
+        # 🔥 작은 페이지 이동 입력
+        # ===============================
+
+        col_jump1, col_jump2 = st.columns([1,1])
+
+        target_page = col_jump1.number_input(
+            "",
+            min_value=1,
+            max_value=total_pages,
+            value=selected_page + 1,
+            step=1,
+            key="jump_page",
+            label_visibility="collapsed"
+        )
+
+        if col_jump2.button("이동", key="jump_btn"):
+            st.session_state.current_page = target_page - 1
+            st.rerun()
+
+        # ===============================
         # 🔥 페이지 바로 이동
         # ===============================
 
@@ -491,6 +511,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
