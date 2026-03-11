@@ -419,7 +419,7 @@ def show_debug_page():
 
     with nav_center:
 
-        col_page, col_total = st.columns([0.25,2])
+        col_page, col_total = st.columns([1,2])
 
         page_input = col_page.text_input(
             "",
@@ -488,6 +488,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
