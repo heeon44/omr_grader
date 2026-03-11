@@ -2,6 +2,9 @@ import streamlit as st
 import cv2
 import numpy as np
 import fitz  # 🔥 PyMuPDF
+import pandas as pd
+import io
+
 from core.database import load_exams
 from core.omr_engine import align_images_orb, detect_answer
 
@@ -76,6 +79,39 @@ def enhance_mobile_image(img):
 
     return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
 
+# ===============================
+# Excel 저장 함수
+# ===============================
+def generate_answer_excel():
+
+    if "answers" not in st.session_state:
+        return None
+
+    exam_name = st.session_state.get("exam_name", "exam")
+
+    rows = []
+
+    for page, answers in st.session_state.answers.items():
+
+        row = {"page": page + 1}
+
+        for q, ans in answers.items():
+
+            if isinstance(ans, list):
+                row[f"Q{q}"] = ",".join(ans)
+            else:
+                row[f"Q{q}"] = ans
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+
+    return output.getvalue(), exam_name
 
 def show_debug_page():
 
@@ -394,7 +430,26 @@ def show_debug_page():
             if st.session_state.current_page < total_pages - 1:
                 st.session_state.current_page += 1
                 st.rerun()
-                
+
+# =====================================================
+# 🔥 Excel 저장 버튼
+# =====================================================
+
+st.markdown("---")
+
+excel_data = generate_answer_excel()
+
+if excel_data:
+
+    excel_bytes, exam_name = excel_data
+
+    st.download_button(
+        "📥 답안 Excel 저장",
+        excel_bytes,
+        file_name=f"{exam_name}_answers.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    
     # =====================================================
     # 🔥 점수 표시 (수정값 기준)
     # =====================================================
@@ -416,6 +471,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
