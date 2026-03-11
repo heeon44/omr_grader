@@ -89,35 +89,58 @@ def show_exam_analysis_page():
 
     question_cols = [c for c in data.columns if c.startswith("Q")]
 
+	# ------------------------------
+	# 문항 -> 영역 매핑
+	# ------------------------------
+
+	question_area_map = {}
+
+	for q in question_cols:
+
+		q_num = q.replace("Q", "")
+
+		area = exam["answers"][q_num].get("area", "기타")
+
+		question_area_map[q] = area
+
+	areas = sorted(set(question_area_map.values()))
+
     # ------------------------------
     # 학생 총점 계산
     # ------------------------------
 
     student_scores = []
+    area_scores_list = []
 
-    for idx, row in data.iterrows():
+	for idx, row in data.iterrows():
 
-        score = 0
+		score = 0
+		area_scores = {area: 0 for area in areas}
 
-        for q in question_cols:
+		for q in question_cols:
 
-            q_num = q.replace("Q", "")
+			q_num = q.replace("Q", "")
+			area = question_area_map[q]
 
-            correct = exam["answers"][q_num]["answer"]
+			correct = exam["answers"][q_num]["answer"]
 
-            if not isinstance(correct, list):
-                correct = [correct]
+			if not isinstance(correct, list):
+				correct = [correct]
 
-            correct = [normalize_answer(c) for c in correct]
+			correct = [normalize_answer(c) for c in correct]
 
-            ans = normalize_answer(row[q])
+			ans = normalize_answer(row[q])
 
-            if ans in correct:
-                score += 1
+			if ans in correct:
+				score += 1
+				area_scores[area] += 1
 
-        student_scores.append(score)
+		student_scores.append(score)
+		area_scores_list.append(area_scores)
 
     data["총점"] = student_scores
+    for area in areas:
+	    data[f"{area}_점수"] = [a[area] for a in area_scores_list]
 
     # ------------------------------
     # 상위 / 하위 그룹
@@ -239,12 +262,26 @@ def show_exam_analysis_page():
 
     avg_rate = rate_series.mean()
 
+    exam_average = data["총점"].mean()
+
+    area_averages = {}
+
+    for area in areas:
+    	area_averages[area] = data[f"{area}_점수"].mean()
+
     summary_rows = [
-        ["응시 인원", total_students],
-        ["평균 정답률", f"{avg_rate:.1f}%"],
-        ["", ""],
-        ["어려운 문제 TOP5", ""],
+    	["응시 인원", total_students],
+    	["시험 평균 점수", f"{exam_average:.2f}"],
+    	["평균 정답률", f"{avg_rate:.1f}%"],
+    	["", ""],
+    	["영역별 평균 점수", ""],
     ]
+
+    for area, avg in area_averages.items():
+    	summary_rows.append([area, f"{avg:.2f}"])
+
+    summary_rows.append(["", ""])
+    summary_rows.append(["어려운 문제 TOP5", ""])
 
     for q, r in hardest.items():
         summary_rows.append([q, f"{r:.1f}%"])
