@@ -5,6 +5,7 @@ from views.template_manager import show_template_manager
 from views.grading_page import show_grading_page
 from views.debug_page import show_debug_page
 from views.image_debug_page import show_image_debug_page
+from views.exam_analysis_page import show_exam_analysis_page
 
 
 # -----------------------------------
@@ -81,7 +82,8 @@ if st.session_state.role == "admin":
             "템플릿 관리",
             "채점 요약(Excel)",
             "답안 채점(PDF)",
-            "답안 채점(JPG, PNG)"
+            "답안 채점(JPG, PNG)",
+            "시험 분석"
         ]
     )
 
@@ -90,9 +92,8 @@ elif st.session_state.role == "갈무리":
     menu = st.sidebar.selectbox(
         "메뉴 선택",
         [
-            "채점 요약(Excel)",
             "답안 채점(PDF)",
-            "답안 채점(JPG, PNG)"
+            "시험 분석"
         ]
     )
 
@@ -119,6 +120,11 @@ elif menu == "템플릿 관리":
 
 
 elif menu == "채점 요약(Excel)":
+
+     if st.session_state.role != "admin":
+        st.error("❌ 관리자만 접근 가능합니다.")
+        st.stop()
+         
     show_grading_page()
 
 
@@ -127,6 +133,16 @@ elif menu == "답안 채점(PDF)":
 
 
 elif menu == "답안 채점(JPG, PNG)":
+
+    if st.session_state.role != "admin":
+        st.error("❌ 관리자만 접근 가능합니다.")
+        st.stop()
+        
     show_image_debug_page()
+
+
+elif menu == "시험 분석":
+    show_exam_analysis_page()
+
 
 
