@@ -93,19 +93,28 @@ def show_exam_analysis_page():
     # 문항 -> 영역 매핑
     # ------------------------------
 
-    sections = exam.get("sections", {})
+	sections = exam.get("sections", {})
 
-    question_area_map = {}
+	question_area_map = {}
 
-    for sec in sections.values():
+	for sec in sections.values():
 
-        area_name = sec.get("name", "기타")
+		area_name = sec.get("name", "기타")
+		questions = sec.get("questions", [])
 
-        for q_num in sec.get("questions", []):
+		for q in questions:
+			try:
+				q_num = int(str(q).strip())
+				question_area_map[q_num] = area_name
+			except:
+				continue
 
-            question_area_map[int(q_num)] = area_name
+	# 영역 목록 생성
+	areas = sorted(set(question_area_map.values()))
 
-    areas = sorted(set(question_area_map.values()))
+	# 영역이 하나도 없는 경우 대비
+	if not areas:
+		areas = ["기타"]
 
     # ------------------------------
     # 학생 총점 계산
@@ -121,8 +130,8 @@ def show_exam_analysis_page():
 
         for q in question_cols:
 
-            q_num = q.replace("Q", "")
-            area = question_area_map.get(int(q_num), "기타")
+			q_num = int(str(q).replace("Q", "").strip())
+			area = question_area_map.get(q_num, "기타")
 
             correct = exam["answers"][q_num]["answer"]
 
