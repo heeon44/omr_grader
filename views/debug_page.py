@@ -409,7 +409,7 @@ def show_debug_page():
     # 🔥 페이지 이동 버튼 (완전 양끝 정렬)
     # =====================================================
 
-    nav_left, nav_center, nav_right = st.columns([1, 6, 1])
+    nav_left, nav_center, nav_right = st.columns([1, 8, 1])
 
     with nav_left:
         if st.button("⬅", key=f"prev_btn_{selected_page}"):
@@ -419,7 +419,7 @@ def show_debug_page():
 
     with nav_center:
 
-        col_page, col_total = st.columns([0.4,2])
+        col_page, col_total = st.columns([0.25,2])
 
         page_input = col_page.text_input(
             "",
@@ -489,6 +489,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
