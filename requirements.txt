@@ -6,4 +6,5 @@ openpyxl
 Pillow
 pytesseract
 PyMuPDF
+xlsxwriter
 
