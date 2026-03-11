@@ -292,6 +292,11 @@ def show_exam_analysis_page():
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
 
         result_df.to_excel(writer, sheet_name="문항분석", index=False)
+        summary_df.to_excel(writer, sheet_name="시험요약", index=False)
+
+        workbook = writer.book
+        worksheet = writer.sheets["문항분석"]
+        summary_sheet = writer.sheets["시험요약"]
 
         # ------------------------------
         # 히트맵 범례 (문항분석 시트)
@@ -308,21 +313,18 @@ def show_exam_analysis_page():
         worksheet.write(legend_row + 5, 0, "30% 미만 : 매우 어려운 문제", heatmap_10)
 
         worksheet.write(legend_row + 7, 0, "매력적 오답", distractor_format)
-        
-        summary_df.to_excel(writer, sheet_name="시험요약", index=False)
-
-        summary_sheet = writer.sheets["시험요약"]
 
         # ------------------------------
-        # 설명 추가
+        # 시험요약 설명
         # ------------------------------
 
         start_row = len(summary_df) + 2
 
-        summary_sheet.write(start_row + 7, 0, "※ TOP5 옆 % 는 정답률을 의미합니다.")
-
-        workbook = writer.book
-        worksheet = writer.sheets["문항분석"]
+        summary_sheet.write(
+            start_row + 7,
+            0,
+            "※ TOP5 옆 % 는 정답률을 의미합니다."
+        )
 
         # ------------------------------
         # 헤더 스타일
