@@ -93,15 +93,17 @@ def show_exam_analysis_page():
     # 문항 -> 영역 매핑
     # ------------------------------
 
+    sections = exam.get("sections", {})
+
     question_area_map = {}
 
-    for q in question_cols:
+    for sec in sections.values():
 
-        q_num = q.replace("Q", "")
+        area_name = sec.get("name", "기타")
 
-        area = exam["answers"][q_num].get("area", "기타")
+        for q_num in sec.get("questions", []):
 
-        question_area_map[q] = area
+            question_area_map[f"Q{q_num}"] = area_name
 
     areas = sorted(set(question_area_map.values()))
 
@@ -120,7 +122,7 @@ def show_exam_analysis_page():
         for q in question_cols:
 
             q_num = q.replace("Q", "")
-            area = question_area_map[q]
+            area = question_area_map.get(q, "기타")
 
             correct = exam["answers"][q_num]["answer"]
 
