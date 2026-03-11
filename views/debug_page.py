@@ -412,7 +412,7 @@ def show_debug_page():
     nav_left, nav_center, nav_right = st.columns([1, 6, 1])
 
     with nav_left:
-        if st.button("⬅", key="prev_btn"):
+        if st.button("⬅", key=f"prev_btn_{selected_page}"):
             if st.session_state.current_page > 0:
                 st.session_state.current_page -= 1
                 st.rerun()
@@ -436,37 +436,18 @@ def show_debug_page():
             "",
             min_value=1,
             max_value=total_pages,
-            value=selected_page + 1,
+            value=st.session_state.current_page + 1,
             step=1,
-            key="jump_page",
+            key=f"jump_page_{selected_page}",
             label_visibility="collapsed"
         )
 
-        if col_jump2.button("이동", key="jump_btn"):
-            st.session_state.current_page = target_page - 1
-            st.rerun()
-
-        # ===============================
-        # 🔥 페이지 바로 이동
-        # ===============================
-
-        col_jump1, col_jump2 = st.columns([2,1])
-
-        target_page = col_jump1.number_input(
-            "페이지 이동",
-            min_value=1,
-            max_value=total_pages,
-            value=selected_page + 1,
-            step=1,
-            key="jump_page"
-        )
-
-        if col_jump2.button("이동", key="jump_btn"):
+        if col_jump2.button("이동", key=f"jump_btn_{selected_page}"):
             st.session_state.current_page = target_page - 1
             st.rerun()
 
     with nav_right:
-        if st.button("➡", key="next_btn"):
+        if st.button("➡", key=f"next_btn_{selected_page}"):
             if st.session_state.current_page < total_pages - 1:
                 st.session_state.current_page += 1
                 st.rerun()
@@ -511,6 +492,7 @@ def show_debug_page():
         f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
         unsafe_allow_html=True
     )
+
 
 
 
