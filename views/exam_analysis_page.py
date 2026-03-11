@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import io
-import matplotlib.pyplot as plt
 
 from core.database import load_exams
 
@@ -61,10 +60,7 @@ def show_exam_analysis_page():
         st.info("Excel 파일을 업로드하세요.")
         return
 
-    # ---------------------------------
     # Excel 병합
-    # ---------------------------------
-
     dfs = []
 
     for file in uploaded_files:
@@ -82,10 +78,7 @@ def show_exam_analysis_page():
     results = []
     graphs = {}
 
-    # ---------------------------------
     # 문항 분석
-    # ---------------------------------
-
     for q in question_cols:
 
         q_num = q.replace("Q", "")
@@ -114,12 +107,7 @@ def show_exam_analysis_page():
         row["정답률"] = f"{correct_rate:.1f}% ({correct_count}명)"
         row["오답률"] = f"{wrong_rate:.1f}%"
 
-        # 난이도
         row["난이도"] = get_difficulty(correct_rate)
-
-        # ---------------------------------
-        # 매력적 오답
-        # ---------------------------------
 
         wrong_counts = counts.drop(correct, errors="ignore")
 
@@ -134,10 +122,6 @@ def show_exam_analysis_page():
 
         else:
             row["매력적 오답"] = ""
-
-        # ---------------------------------
-        # 선지 분포
-        # ---------------------------------
 
         choice_counts = {}
 
@@ -157,10 +141,6 @@ def show_exam_analysis_page():
 
     result_df = pd.DataFrame(results)
 
-    # ---------------------------------
-    # 정답률 기준 정렬
-    # ---------------------------------
-
     result_df["정답률_num"] = result_df["정답률"].str.extract(r'(\d+\.?\d*)').astype(float)
 
     result_df = result_df.sort_values("정답률_num")
@@ -171,26 +151,22 @@ def show_exam_analysis_page():
 
     st.dataframe(result_df, use_container_width=True)
 
-    # ---------------------------------
-    # 그래프 표시
-    # ---------------------------------
-
+    # 그래프
     st.subheader("📊 선지 분포 그래프")
 
     for q, counts in graphs.items():
 
         st.markdown(f"**{q}**")
 
-        chart_data = pd.DataFrame(
-            {"선택수": counts}
+        chart_data = pd.DataFrame.from_dict(
+            counts,
+            orient="index",
+            columns=["선택수"]
         )
 
         st.bar_chart(chart_data)
 
-    # ---------------------------------
     # Excel 다운로드
-    # ---------------------------------
-
     output = io.BytesIO()
 
     with pd.ExcelWriter(output) as writer:
