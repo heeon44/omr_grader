@@ -35,6 +35,21 @@ def get_difficulty(rate):
 
 
 # ------------------------------
+# 변별도 평가
+# ------------------------------
+def get_discrimination_level(d):
+
+    if d >= 0.4:
+        return "매우 좋음"
+    elif d >= 0.3:
+        return "좋음"
+    elif d >= 0.2:
+        return "보통"
+    else:
+        return "나쁨"
+
+
+# ------------------------------
 # 페이지
 # ------------------------------
 def show_exam_analysis_page():
@@ -60,6 +75,10 @@ def show_exam_analysis_page():
         st.info("Excel 파일을 업로드하세요.")
         return
 
+    # ------------------------------
+    # Excel 병합
+    # ------------------------------
+
     dfs = []
 
     for file in uploaded_files:
@@ -74,12 +93,54 @@ def show_exam_analysis_page():
 
     question_cols = [c for c in data.columns if c.startswith("Q")]
 
-    results = []
-    graphs = {}
+    # ------------------------------
+    # 학생 총점 계산
+    # ------------------------------
+
+    student_scores = []
+
+    for idx, row in data.iterrows():
+
+        score = 0
+
+        for q in question_cols:
+
+            q_num = q.replace("Q", "")
+
+            correct = exam["answers"][q_num]["answer"]
+
+            if not isinstance(correct, list):
+                correct = [correct]
+
+            correct = [normalize_answer(c) for c in correct]
+
+            ans = normalize_answer(row[q])
+
+            if ans in correct:
+                score += 1
+
+        student_scores.append(score)
+
+    data["총점"] = student_scores
+
+    # ------------------------------
+    # 상위 / 하위 그룹 분리
+    # ------------------------------
+
+    sorted_data = data.sort_values("총점", ascending=False)
+
+    group_size = max(int(len(sorted_data) * 0.27), 1)
+
+    top_group = sorted_data.head(group_size)
+    bottom_group = sorted_data.tail(group_size)
 
     # ------------------------------
     # 문항 분석
     # ------------------------------
+
+    results = []
+    graphs = {}
+    rate_map = {}
 
     for q in question_cols:
 
@@ -87,29 +148,38 @@ def show_exam_analysis_page():
 
         correct = exam["answers"][q_num]["answer"]
 
-        if isinstance(correct, list):
-            correct = correct[0]
+        if not isinstance(correct, list):
+            correct = [correct]
 
-        correct = normalize_answer(correct)
+        correct = [normalize_answer(c) for c in correct]
 
-        values = data[q].apply(normalize_answer).dropna()
+        values = data[q].apply(normalize_answer)
 
         counts = values.value_counts()
 
         row = {
             "문항": q,
-            "정답": correct
+            "정답": ", ".join(correct)
         }
 
-        correct_count = counts.get(correct, 0)
+        correct_count = 0
+
+        for c in correct:
+            correct_count += counts.get(c, 0)
 
         correct_rate = (correct_count / total_students) * 100
         wrong_rate = 100 - correct_rate
+
+        rate_map[q] = correct_rate
 
         row["정답률"] = f"{correct_rate:.1f}% ({correct_count}명)"
         row["오답률"] = f"{wrong_rate:.1f}%"
 
         row["난이도"] = get_difficulty(correct_rate)
+
+        # ------------------------------
+        # 매력적 오답
+        # ------------------------------
 
         wrong_counts = counts.drop(correct, errors="ignore")
 
@@ -125,6 +195,10 @@ def show_exam_analysis_page():
         else:
             row["매력적 오답"] = ""
 
+        # ------------------------------
+        # 선지 분포
+        # ------------------------------
+
         choice_counts = {}
 
         for choice in ["1", "2", "3", "4", "5"]:
@@ -139,12 +213,41 @@ def show_exam_analysis_page():
 
         graphs[q] = choice_counts
 
+        # ------------------------------
+        # 변별도 계산
+        # ------------------------------
+
+        top_correct = 0
+        bottom_correct = 0
+
+        for idx, student in top_group.iterrows():
+
+            ans = normalize_answer(student[q])
+
+            if ans in correct:
+                top_correct += 1
+
+        for idx, student in bottom_group.iterrows():
+
+            ans = normalize_answer(student[q])
+
+            if ans in correct:
+                bottom_correct += 1
+
+        top_rate = top_correct / len(top_group)
+        bottom_rate = bottom_correct / len(bottom_group)
+
+        discrimination = top_rate - bottom_rate
+
+        row["변별도"] = f"{discrimination:.2f}"
+        row["변별도 평가"] = get_discrimination_level(discrimination)
+
         results.append(row)
 
     result_df = pd.DataFrame(results)
 
     # ------------------------------
-    # 문항 번호 순 정렬
+    # 문항 순 정렬
     # ------------------------------
 
     result_df["문항번호"] = result_df["문항"].str.replace("Q", "").astype(int)
@@ -158,19 +261,13 @@ def show_exam_analysis_page():
     st.dataframe(result_df, use_container_width=True)
 
     # ------------------------------
-    # 시험 요약 계산
+    # 시험 요약
     # ------------------------------
 
-    correct_rates = []
+    hardest_q = min(rate_map, key=rate_map.get)
+    easiest_q = max(rate_map, key=rate_map.get)
 
-    for r in results:
-        rate = float(r["정답률"].split("%")[0])
-        correct_rates.append(rate)
-
-    avg_rate = sum(correct_rates) / len(correct_rates)
-
-    hardest_q = result_df.iloc[0]["문항"]
-    easiest_q = result_df.iloc[-1]["문항"]
+    avg_rate = sum(rate_map.values()) / len(rate_map)
 
     summary_df = pd.DataFrame({
         "항목": ["응시 인원", "평균 정답률", "가장 어려운 문제", "가장 쉬운 문제"],
