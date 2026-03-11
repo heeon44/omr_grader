@@ -294,6 +294,23 @@ def show_exam_analysis_page():
         result_df.to_excel(writer, sheet_name="문항분석", index=False)
         summary_df.to_excel(writer, sheet_name="시험요약", index=False)
 
+        summary_sheet = writer.sheets["시험요약"]
+
+        # ------------------------------
+        # 설명 추가
+        # ------------------------------
+
+        start_row = len(summary_df) + 2
+
+        summary_sheet.write(start_row, 0, "※ 색상 의미 (정답 선지 히트맵)")
+        summary_sheet.write(start_row + 1, 0, "90% 이상 : 매우 쉬운 문제")
+        summary_sheet.write(start_row + 2, 0, "70% 이상 : 쉬운 문제")
+        summary_sheet.write(start_row + 3, 0, "50% 이상 : 적정 난이도")
+        summary_sheet.write(start_row + 4, 0, "30% 이상 : 어려운 문제")
+        summary_sheet.write(start_row + 5, 0, "30% 미만 : 매우 어려운 문제")
+
+        summary_sheet.write(start_row + 7, 0, "※ TOP5 옆 % 는 정답률을 의미합니다.")
+
         workbook = writer.book
         worksheet = writer.sheets["문항분석"]
 
