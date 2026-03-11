@@ -5,6 +5,18 @@ import io
 from core.database import load_exams
 
 
+def normalize_answer(v):
+    if pd.isna(v):
+        return None
+
+    v = str(v)
+
+    if v.endswith(".0"):
+        v = v[:-2]
+
+    return v.strip()
+
+
 def show_exam_analysis_page():
 
     st.header("📊 시험 분석")
@@ -25,8 +37,12 @@ def show_exam_analysis_page():
     )
 
     if not uploaded_files:
-        st.info("분석할 Excel 파일을 업로드하세요.")
+        st.info("Excel 파일을 업로드하세요.")
         return
+
+    # ---------------------------------
+    # Excel 여러개 병합
+    # ---------------------------------
 
     dfs = []
 
@@ -42,43 +58,57 @@ def show_exam_analysis_page():
 
     results = []
 
+    # ---------------------------------
+    # 문항 분석
+    # ---------------------------------
+
     for q in question_cols:
 
         q_num = q.replace("Q", "")
 
-        correct_answer = exam["answers"][q_num]["answer"]
+        correct = exam["answers"][q_num]["answer"]
 
-        if isinstance(correct_answer, list):
-            correct_answer = correct_answer[0]
+        if isinstance(correct, list):
+            correct = correct[0]
 
-        correct_answer = str(correct_answer)
+        correct = normalize_answer(correct)
 
-        counts = data[q].astype(str).value_counts()
+        values = data[q].apply(normalize_answer).dropna()
+
+        counts = values.value_counts()
 
         row = {
             "문항": q,
-            "정답": correct_answer
+            "정답": correct
         }
 
-        correct_count = counts.get(correct_answer, 0)
+        correct_count = counts.get(correct, 0)
 
         correct_rate = (correct_count / total_students) * 100
 
         row["정답률"] = f"{correct_rate:.1f}% ({correct_count}명)"
 
-        wrong_counts = counts.drop(correct_answer, errors="ignore")
+        # -----------------------------
+        # 매력적 오답
+        # -----------------------------
 
-        attractive = ""
+        wrong_counts = counts.drop(correct, errors="ignore")
 
         if len(wrong_counts) > 0:
-            attractive_choice = wrong_counts.idxmax()
-            attractive_count = wrong_counts.max()
 
-            attractive_rate = (attractive_count / total_students) * 100
+            distractor = wrong_counts.idxmax()
+            distractor_count = wrong_counts.max()
 
-            attractive = f"{attractive_choice} ({attractive_rate:.1f}%/{attractive_count}명)"
+            distractor_rate = (distractor_count / total_students) * 100
 
-        row["매력적 오답"] = attractive
+            row["매력적 오답"] = f"{distractor} ({distractor_rate:.1f}%/{distractor_count}명)"
+
+        else:
+            row["매력적 오답"] = ""
+
+        # -----------------------------
+        # 선지 분포
+        # -----------------------------
 
         for choice in ["1", "2", "3", "4", "5"]:
 
@@ -96,16 +126,18 @@ def show_exam_analysis_page():
 
     st.dataframe(result_df, use_container_width=True)
 
+    # ---------------------------------
+    # Excel 다운로드
+    # ---------------------------------
+
     output = io.BytesIO()
 
     with pd.ExcelWriter(output) as writer:
         result_df.to_excel(writer, index=False)
 
-    excel_data = output.getvalue()
-
     st.download_button(
         "📥 분석 결과 Excel 다운로드",
-        excel_data,
+        output.getvalue(),
         f"{exam_name}_analysis.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
