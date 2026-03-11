@@ -273,14 +273,14 @@ def show_exam_analysis_page():
             "align": "center"
         })
 
-        heatmap_90 = workbook.add_format({"bg_color": "#BDD7EE"})
+        heatmap_90 = workbook.add_format({"bg_color": "#DDEBF7"})
         heatmap_70 = workbook.add_format({"bg_color": "#C6E0B4"})
         heatmap_50 = workbook.add_format({"bg_color": "#FFE699"})
         heatmap_30 = workbook.add_format({"bg_color": "#F8CBAD"})
         heatmap_10 = workbook.add_format({"bg_color": "#F4B084"})
 
         distractor_format = workbook.add_format({
-            "bg_color": "#F8CBAD"
+            "bg_color": "#9DC3E6"
         })
 
         for col_num, value in enumerate(result_df.columns.values):
