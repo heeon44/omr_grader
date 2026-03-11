@@ -87,10 +87,10 @@ def show_exam_analysis_page():
 
     st.success(f"총 응시 인원: {total_students}명")
 
-    question_cols = [c for c in data.columns if c.startswith("Q")]
+    question_cols = [c for c in data.columns if str(c).startswith("Q")]
 
     # ------------------------------
-    # 문항 -> 영역 매핑
+    # 문항 → 영역 매핑
     # ------------------------------
 
     sections = exam.get("sections", {})
@@ -121,34 +121,37 @@ def show_exam_analysis_page():
     student_scores = []
     area_scores_list = []
 
-	for idx, row in data.iterrows():
+    for _, row in data.iterrows():
 
-		score = 0
-		area_scores = {area: 0 for area in areas}
+        score = 0
+        area_scores = {area: 0 for area in areas}
 
-		for q in question_cols:
+        for q in question_cols:
 
-			q_num = int(str(q).replace("Q", "").strip())
-			correct = exam["answers"][str(q_num)]["answer"]
+            q_num = int(str(q).replace("Q", "").strip())
 
-			if not isinstance(correct, list):
-				correct = [correct]
+            correct = exam["answers"].get(str(q_num), {}).get("answer", [])
 
-			correct = [normalize_answer(c) for c in correct]
+            if not isinstance(correct, list):
+                correct = [correct]
 
-				ans = normalize_answer(row[q])
+            correct = [normalize_answer(c) for c in correct]
 
-				if ans in correct:
-					score += 1
-					area_scores[area] += 1
+            ans = normalize_answer(row[q])
 
-		student_scores.append(score)
-		area_scores_list.append(area_scores)
+            area = question_area_map.get(q_num, "기타")
+
+            if ans in correct:
+                score += 1
+                area_scores[area] += 1
+
+        student_scores.append(score)
+        area_scores_list.append(area_scores)
 
     data["총점"] = student_scores
 
     for area in areas:
-        data[f"{area}_점수"] = [a[area] for a in area_scores_list]
+        data[f"{area}_점수"] = [a.get(area, 0) for a in area_scores_list]
 
     # ------------------------------
     # 상위 / 하위 그룹
@@ -171,8 +174,9 @@ def show_exam_analysis_page():
 
     for q in question_cols:
 
-			q_num = int(str(q).replace("Q", "").strip())
-			correct = exam["answers"][str(q_num)]["answer"]
+        q_num = int(str(q).replace("Q", "").strip())
+
+        correct = exam["answers"].get(str(q_num), {}).get("answer", [])
 
         if not isinstance(correct, list):
             correct = [correct]
@@ -188,10 +192,7 @@ def show_exam_analysis_page():
             "정답": ", ".join(correct)
         }
 
-        correct_count = 0
-
-        for c in correct:
-            correct_count += counts.get(c, 0)
+        correct_count = sum(counts.get(c, 0) for c in correct)
 
         correct_rate = (correct_count / total_students) * 100
         wrong_rate = 100 - correct_rate
@@ -206,8 +207,7 @@ def show_exam_analysis_page():
         wrong_counts = counts.drop(correct, errors="ignore")
 
         if len(wrong_counts) > 0:
-            distractor = wrong_counts.idxmax()
-            row["매력적 오답"] = distractor
+            row["매력적 오답"] = wrong_counts.idxmax()
         else:
             row["매력적 오답"] = ""
 
@@ -225,22 +225,17 @@ def show_exam_analysis_page():
 
         graphs[q] = choice_counts
 
-        top_correct = 0
-        bottom_correct = 0
+        # 변별도
 
-        for idx, student in top_group.iterrows():
+        top_correct = sum(
+            normalize_answer(r[q]) in correct
+            for _, r in top_group.iterrows()
+        )
 
-            ans = normalize_answer(student[q])
-
-            if ans in correct:
-                top_correct += 1
-
-        for idx, student in bottom_group.iterrows():
-
-            ans = normalize_answer(student[q])
-
-            if ans in correct:
-                bottom_correct += 1
+        bottom_correct = sum(
+            normalize_answer(r[q]) in correct
+            for _, r in bottom_group.iterrows()
+        )
 
         top_rate = top_correct / len(top_group)
         bottom_rate = bottom_correct / len(bottom_group)
@@ -262,6 +257,10 @@ def show_exam_analysis_page():
 
     st.dataframe(result_df, use_container_width=True)
 
+    # ------------------------------
+    # 시험 요약
+    # ------------------------------
+
     rate_series = pd.Series(rate_map)
 
     hardest = rate_series.sort_values().head(5)
@@ -271,10 +270,10 @@ def show_exam_analysis_page():
 
     exam_average = data["총점"].mean()
 
-    area_averages = {}
-
-    for area in areas:
-        area_averages[area] = data[f"{area}_점수"].mean()
+    area_averages = {
+        area: data[f"{area}_점수"].mean()
+        for area in areas
+    }
 
     summary_rows = [
         ["응시 인원", total_students],
@@ -300,6 +299,10 @@ def show_exam_analysis_page():
         summary_rows.append([q, f"{r:.1f}%"])
 
     summary_df = pd.DataFrame(summary_rows, columns=["항목", "값"])
+
+    # ------------------------------
+    # Excel 생성
+    # ------------------------------
 
     output = io.BytesIO()
 
@@ -346,14 +349,6 @@ def show_exam_analysis_page():
 
         worksheet.write(legend_row + 7, 0, "매력적 오답", distractor_format)
 
-        start_row = len(summary_df) + 2
-
-        summary_sheet.write(
-            start_row + 7,
-            0,
-            "※ TOP5 옆 % 는 정답률을 의미합니다."
-        )
-
         for row_idx, row in result_df.iterrows():
 
             correct_choices = str(row["정답"]).split(",")
@@ -382,7 +377,16 @@ def show_exam_analysis_page():
 
                 elif choice == distractor:
 
-                    worksheet.write(row_idx + 1, col_idx, row[choice], distractor_format)
+                    worksheet.write(
+                        row_idx + 1,
+                        col_idx,
+                        row[choice],
+                        distractor_format
+                    )
+
+        # ------------------------------
+        # 선지 그래프
+        # ------------------------------
 
         chart_sheet = workbook.add_worksheet("선지그래프")
 
