@@ -5,9 +5,9 @@ import io
 from core.database import load_exams
 
 
-# ---------------------------------
+# ------------------------------
 # 값 정규화
-# ---------------------------------
+# ------------------------------
 def normalize_answer(v):
 
     if pd.isna(v):
@@ -21,9 +21,9 @@ def normalize_answer(v):
     return v.strip()
 
 
-# ---------------------------------
+# ------------------------------
 # 난이도 계산
-# ---------------------------------
+# ------------------------------
 def get_difficulty(rate):
 
     if rate < 30:
@@ -34,9 +34,9 @@ def get_difficulty(rate):
         return "쉬움"
 
 
-# ---------------------------------
+# ------------------------------
 # 페이지
-# ---------------------------------
+# ------------------------------
 def show_exam_analysis_page():
 
     st.header("📊 시험 분석")
@@ -60,7 +60,6 @@ def show_exam_analysis_page():
         st.info("Excel 파일을 업로드하세요.")
         return
 
-    # Excel 병합
     dfs = []
 
     for file in uploaded_files:
@@ -78,7 +77,10 @@ def show_exam_analysis_page():
     results = []
     graphs = {}
 
+    # ------------------------------
     # 문항 분석
+    # ------------------------------
+
     for q in question_cols:
 
         q_num = q.replace("Q", "")
@@ -141,36 +143,85 @@ def show_exam_analysis_page():
 
     result_df = pd.DataFrame(results)
 
-    result_df["정답률_num"] = result_df["정답률"].str.extract(r'(\d+\.?\d*)').astype(float)
+    # ------------------------------
+    # 문항 번호 순 정렬
+    # ------------------------------
 
-    result_df = result_df.sort_values("정답률_num")
+    result_df["문항번호"] = result_df["문항"].str.replace("Q", "").astype(int)
 
-    result_df = result_df.drop(columns=["정답률_num"])
+    result_df = result_df.sort_values("문항번호")
+
+    result_df = result_df.drop(columns=["문항번호"])
 
     st.subheader("📋 문항 분석 결과")
 
     st.dataframe(result_df, use_container_width=True)
 
-    # 그래프
-    st.subheader("📊 선지 분포 그래프")
+    # ------------------------------
+    # 시험 요약 계산
+    # ------------------------------
 
-    for q, counts in graphs.items():
+    correct_rates = []
 
-        st.markdown(f"**{q}**")
+    for r in results:
+        rate = float(r["정답률"].split("%")[0])
+        correct_rates.append(rate)
 
-        chart_data = pd.DataFrame.from_dict(
-            counts,
-            orient="index",
-            columns=["선택수"]
-        )
+    avg_rate = sum(correct_rates) / len(correct_rates)
 
-        st.bar_chart(chart_data)
+    hardest_q = result_df.iloc[0]["문항"]
+    easiest_q = result_df.iloc[-1]["문항"]
 
-    # Excel 다운로드
+    summary_df = pd.DataFrame({
+        "항목": ["응시 인원", "평균 정답률", "가장 어려운 문제", "가장 쉬운 문제"],
+        "값": [
+            total_students,
+            f"{avg_rate:.1f}%",
+            hardest_q,
+            easiest_q
+        ]
+    })
+
+    # ------------------------------
+    # Excel 저장
+    # ------------------------------
+
     output = io.BytesIO()
 
-    with pd.ExcelWriter(output) as writer:
-        result_df.to_excel(writer, index=False)
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+
+        result_df.to_excel(writer, sheet_name="문항분석", index=False)
+        summary_df.to_excel(writer, sheet_name="시험요약", index=False)
+
+        workbook = writer.book
+        chart_sheet = workbook.add_worksheet("선지그래프")
+
+        for i, (q, counts) in enumerate(graphs.items()):
+
+            col = i * 7
+
+            chart_sheet.write(0, col, q)
+
+            chart_sheet.write_column(1, col, ["1", "2", "3", "4", "5"])
+            chart_sheet.write_column(1, col + 1, [
+                counts.get("1", 0),
+                counts.get("2", 0),
+                counts.get("3", 0),
+                counts.get("4", 0),
+                counts.get("5", 0)
+            ])
+
+            chart = workbook.add_chart({"type": "column"})
+
+            chart.add_series({
+                "categories": ["선지그래프", 1, col, 5, col],
+                "values": ["선지그래프", 1, col + 1, 5, col + 1],
+                "name": q
+            })
+
+            chart.set_title({"name": q})
+
+            chart_sheet.insert_chart(7, col, chart)
 
     st.download_button(
         "📥 분석 결과 Excel 다운로드",
