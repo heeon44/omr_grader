@@ -316,7 +316,7 @@ def show_debug_page():
 
 
         # ===============================
-        # 버블 표시
+        # 버블 색 표시
         # ===============================
         for i in range(5):
 
@@ -325,17 +325,56 @@ def show_debug_page():
 
             bubble_id = str(i + 1)
 
-            if bubble_id in correct and bubble_id in selected:
-                color = (0, 255, 0)
+            # -----------------------------
+            # OR 문제
+            # -----------------------------
+            if answer_mode == "or":
 
-            elif bubble_id in correct:
-                color = (255, 0, 0)
+                if bubble_id in selected_list and bubble_id in correct_list:
+                    color = (0, 255, 0)   # 초록 (맞은 선택)
 
-            elif bubble_id in selected:
-                color = (0, 255, 255)
+                elif bubble_id in selected_list:
+                    color = (0, 255, 255) # 노랑 (틀린 선택)
 
+                elif bubble_id in correct_list:
+                    color = (255, 200, 0) # 연한 파랑 (OR 정답 후보)
+
+                else:
+                    continue
+
+            # -----------------------------
+            # 복수 정답
+            # -----------------------------
+            elif answer_mode == "multi":
+
+                if bubble_id in selected_list and bubble_id in correct_list:
+                    color = (0, 255, 0)
+
+                elif bubble_id in correct_list:
+                    color = (255, 0, 0)
+
+                elif bubble_id in selected_list:
+                    color = (0, 255, 255)
+
+                else:
+                    continue
+
+            # -----------------------------
+            # 단일 정답
+            # -----------------------------
             else:
-                continue
+
+                if bubble_id in selected_list and bubble_id in correct_list:
+                    color = (0, 255, 0)
+
+                elif bubble_id in correct_list:
+                    color = (255, 0, 0)
+
+                elif bubble_id in selected_list:
+                    color = (0, 255, 255)
+
+                else:
+                    continue
 
             overlay = debug_img.copy()
 
