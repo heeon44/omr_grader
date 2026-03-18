@@ -275,8 +275,15 @@ def show_exam_manager():
             )
 
             if name and q_range:
-                new_sections[name] = parse_question_range(q_range)
 
+                q_list = parse_question_range(q_range)
+
+                sec_id = f"sec{i+1}"
+
+                new_sections[sec_id] = {
+                    "name": name,
+                    "questions": q_list
+                }
         if st.button("시험 등록"):
 
             new_data = {
@@ -442,7 +449,15 @@ def show_exam_manager():
             )
 
             if name and q_range:
-                new_sections[name] = parse_question_range(q_range)
+
+                q_list = parse_question_range(q_range)
+
+                sec_id = f"sec{i+1}"
+
+                new_sections[sec_id] = {
+                    "name": name,
+                    "questions": q_list
+                }
                 
 
         if st.button("시험 수정 저장"):
