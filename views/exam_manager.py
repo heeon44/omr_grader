@@ -227,7 +227,7 @@ def show_exam_manager():
             )
 
             if q_type == "mcq":
-                answer_value = [x.strip() for x in ans_input.split(",")] if ans_input else []
+                answer_value = ans_input.strip()
             else:
                 answer_value = ans_input.strip()
 
@@ -336,7 +336,7 @@ def show_exam_manager():
             )
 
             if q_type == "mcq":
-                answer_value = [x.strip() for x in ans_input.split(",")] if ans_input else []
+                answer_value = ans_input.strip()
             else:
                 answer_value = ans_input.strip()
 
