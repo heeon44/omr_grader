@@ -24,10 +24,14 @@ def grade_student(row, exam):
             student_set = set(student_answer.split(",")) if student_answer else set()
             correct_set = set(correct)
 
-            if student_set == correct_set:
+            # 복수정답 허용
+            if student_set and student_set.issubset(correct_set):
+
                 row[f"{q}번"] = "O"
                 total_score += scores.get(str(q), 1)
+
             else:
+
                 row[f"{q}번"] = "X"
                 wrong_questions.append(str(q))
 
@@ -36,25 +40,23 @@ def grade_student(row, exam):
         # -------------------------------------------------
         elif q_type == "short":
 
-            # 🔥 O/X 대신 학생 답 그대로 표시
+            # 학생 답 그대로 표시
             row[f"{q}번"] = student_answer
 
-            # 점수 계산은 별도
-            if student_answer == correct.strip():
-                total_score += scores.get(str(q), 1)
-            else:
-                wrong_questions.append(str(q))
+            # 자동 채점 X (수기 채점 예정)
 
         else:
+
             row[f"{q}번"] = ""
 
-        # 학생답 원본 컬럼 제거
+        # 학생답 컬럼 제거
         if f"{q}번_학생답" in row:
             del row[f"{q}번_학생답"]
 
     # -------------------------------------------------
-    # 영역 점수 계산
+    # 영역 점수 계산 (객관식만)
     # -------------------------------------------------
+
     for sec_id, sec in sections.items():
 
         sec_name = sec.get("name", f"영역{sec_id}")
@@ -69,14 +71,10 @@ def grade_student(row, exam):
 
             q_data = answers.get(str(q), {})
             q_type = q_data.get("type", "mcq")
-            correct = q_data.get("answer")
 
             if q_type == "mcq":
-                if row.get(f"{q}번") == "O":
-                    sec_score += scores.get(str(q), 1)
 
-            elif q_type == "short":
-                if row.get(f"{q}번") == correct:
+                if row.get(f"{q}번") == "O":
                     sec_score += scores.get(str(q), 1)
 
         row[f"{sec_name}_총점"] = sec_score
@@ -84,6 +82,7 @@ def grade_student(row, exam):
     # -------------------------------------------------
     # 총점 + 틀린 문항
     # -------------------------------------------------
+
     row["총점"] = total_score
     row["틀린 문항"] = ",".join(wrong_questions)
 
