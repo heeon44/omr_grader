@@ -121,10 +121,8 @@ def show_debug_page():
             page_answers = {}
 
             for q in range(1, exam["num_questions"] + 1):
-                
+
                 answer_mode = "single"
-                correct_list = []
-                selected_list = []
 
                 if str(q) not in layout.get("y_ranges", {}):
                     continue
@@ -141,38 +139,25 @@ def show_debug_page():
                 correct = exam["answers"][str(q)]["answer"]
                 q_type = exam["answers"][str(q)].get("type", "mc")
 
-                # -------------------------------
-                # 단답식 → OMR 읽지 않음
-                # -------------------------------
                 if q_type == "short":
 
                     selected = []
 
                 else:
 
-                    # correct 정규화
                     if not isinstance(correct, list):
                         correct_raw = [correct]
                     else:
                         correct_raw = correct
 
-                    # -------------------------------
-                    # OR 정답
-                    # -------------------------------
                     if any("or" in str(c) for c in correct_raw):
 
                         expected = 1
 
-                    # -------------------------------
-                    # 복수 정답 (,)
-                    # -------------------------------
                     elif len(correct_raw) > 1:
 
                         expected = len(correct_raw)
 
-                    # -------------------------------
-                    # 단일 정답
-                    # -------------------------------
                     else:
 
                         expected = 1
@@ -188,9 +173,11 @@ def show_debug_page():
 
                 page_answers[q] = selected
 
-            st.session_state.answers[idx] = page_answers
-            st.session_state.aligned_pages[idx] = aligned
+            # ⭐⭐⭐ 핵심 수정 (idx 대신 page_id)
+            page_id = len(st.session_state.aligned_pages)
 
+            st.session_state.answers[page_id] = page_answers
+            st.session_state.aligned_pages[page_id] = aligned
 
     # =====================================================
     # 채점 결과 없으면 종료
@@ -198,15 +185,24 @@ def show_debug_page():
     if "aligned_pages" not in st.session_state:
         return
 
-
     total_pages = len(st.session_state.aligned_pages)
+
+    # ⭐ 안전장치
+    if total_pages == 0:
+        st.error("OMR 정렬 실패 (template 매칭 실패)")
+        return
 
     if st.session_state.current_page >= total_pages:
         st.session_state.current_page = 0
 
     selected_page = st.session_state.current_page
 
-    aligned = st.session_state.aligned_pages[selected_page]
+    # ⭐ 안전 접근
+    aligned = st.session_state.aligned_pages.get(selected_page)
+
+    if aligned is None:
+        st.error("페이지 로딩 실패")
+        return
 
     page_answers = st.session_state.answers.get(selected_page, {})
 
