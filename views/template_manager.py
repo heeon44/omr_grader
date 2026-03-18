@@ -402,12 +402,16 @@ def show_template_manager():
             for root, dirs, files in os.walk(TEMPLATE_DIR):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    z.write(file_path,
-                            arcname=os.path.join("templates", file))
+                    z.write(
+                        file_path,
+                        arcname=os.path.join("templates", file)
+                    )
 
             # 시험 JSON 백업
-            z.write(exam_backup_file,
-                    arcname="exams_backup.json")
+            z.write(
+                exam_backup_file,
+                arcname="exams_backup.json"
+            )
 
         st.download_button(
             "📥 전체 백업 ZIP 다운로드",
@@ -415,6 +419,35 @@ def show_template_manager():
             file_name="omr_full_backup.zip",
             mime="application/zip"
         )
+
+        # ----------------------------
+        # 개별 템플릿 다운로드
+        # ----------------------------
+        st.markdown("### 📂 템플릿 선택 다운로드")
+
+        template_files = os.listdir(TEMPLATE_DIR)
+
+        if template_files:
+
+            selected_template = st.selectbox(
+                "다운로드할 템플릿 선택",
+                template_files
+            )
+
+            template_path = os.path.join(
+                TEMPLATE_DIR,
+                selected_template
+            )
+
+            with open(template_path, "rb") as f:
+                template_bytes = f.read()
+
+            st.download_button(
+                "📥 선택 템플릿 다운로드",
+                data=template_bytes,
+                file_name=selected_template,
+                mime="image/png"
+            )
 
         # ----------------------------
         # ZIP 업로드 복원
@@ -433,14 +466,16 @@ def show_template_manager():
 
                 if os.path.exists(backup_json_path):
 
-                    with open(backup_json_path,
-                              "r",
-                              encoding="utf-8") as f:
+                    with open(
+                        backup_json_path,
+                        "r",
+                        encoding="utf-8"
+                    ) as f:
                         restored_exams = json.load(f)
 
                     save_exams(restored_exams)
 
-                    # 🔥 복원 후 현재 편집 시험 즉시 반영
+                    # 복원 후 현재 편집 시험 즉시 반영
                     exams = load_exams()
                     if edit_name in exams:
                         exam = exams[edit_name]
@@ -452,7 +487,3 @@ def show_template_manager():
 
             except Exception as e:
                 st.error(f"복원 실패: {e}")
-
-
-
-
