@@ -256,15 +256,48 @@ def show_exam_manager():
 
     exams = load_exams()
 
+    # -----------------------------------
+    # 전체 시험 다운로드
+    # -----------------------------------
     backup_json = json.dumps(exams, ensure_ascii=False, indent=2)
 
     st.download_button(
-        label="📥 시험자료 JSON 다운로드",
+        label="📥 전체 시험자료 다운로드",
         data=backup_json,
         file_name="exam_backup.json",
         mime="application/json"
     )
 
+    # -----------------------------------
+    # 선택 시험 다운로드
+    # -----------------------------------
+    st.markdown("### 📂 시험 선택 다운로드")
+
+    exam_names = list(exams.keys())
+
+    if exam_names:
+
+        selected_exam = st.selectbox(
+            "다운로드할 시험 선택",
+            exam_names
+        )
+
+        if selected_exam:
+
+            single_exam = {selected_exam: exams[selected_exam]}
+
+            exam_json = json.dumps(single_exam, ensure_ascii=False, indent=2)
+
+            st.download_button(
+                label="📥 선택 시험 다운로드",
+                data=exam_json,
+                file_name=f"{selected_exam}.json",
+                mime="application/json"
+            )
+
+    # -----------------------------------
+    # 시험 복원
+    # -----------------------------------
     uploaded_backup = st.file_uploader(
         "📤 시험자료 JSON 업로드로 복원",
         type=["json"]
@@ -278,25 +311,3 @@ def show_exam_manager():
             st.rerun()
         except Exception as e:
             st.error(f"복원 실패: {e}")
-
-st.markdown("### 📂 시험 선택 다운로드")
-
-exam_names = list(exams.keys())
-
-selected_exam = st.selectbox(
-    "다운로드할 시험 선택",
-    exam_names
-)
-
-if selected_exam:
-
-    single_exam = {selected_exam: exams[selected_exam]}
-
-    exam_json = json.dumps(single_exam, ensure_ascii=False, indent=2)
-
-    st.download_button(
-        label="📥 선택 시험 다운로드",
-        data=exam_json,
-        file_name=f"{selected_exam}.json",
-        mime="application/json"
-    )
