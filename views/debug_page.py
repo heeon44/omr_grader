@@ -137,13 +137,41 @@ def show_debug_page():
                 correct = exam["answers"][str(q)]["answer"]
                 q_type = exam["answers"][str(q)].get("type", "mc")
 
+                # -------------------------------
                 # 단답식 → OMR 읽지 않음
+                # -------------------------------
                 if q_type == "short":
+
                     selected = []
 
                 else:
 
-                    expected = len(correct)
+                    # correct 정규화
+                    if not isinstance(correct, list):
+                        correct_raw = [correct]
+                    else:
+                        correct_raw = correct
+
+                    # -------------------------------
+                    # OR 정답
+                    # -------------------------------
+                    if any("or" in str(c) for c in correct_raw):
+
+                        expected = 1
+
+                    # -------------------------------
+                    # 복수 정답 (,)
+                    # -------------------------------
+                    elif len(correct_raw) > 1:
+
+                        expected = len(correct_raw)
+
+                    # -------------------------------
+                    # 단일 정답
+                    # -------------------------------
+                    else:
+
+                        expected = 1
 
                     selected, _ = detect_answer(
                         template_gray,
