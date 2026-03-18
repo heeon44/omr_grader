@@ -463,13 +463,13 @@ def show_debug_page():
     # 🔥 이미지 + 가로 5열 수정표
     # =====================================================
 
-    col_img, col_edit = st.columns([2.5, 1.5], gap="small")
+    col_img, col_edit = st.columns([4.5, 1.5], gap="small")
 
     with col_img:
         st.image(debug_img, channels="BGR", width=850)
 
     with col_edit:
-        st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:400px'></div>", unsafe_allow_html=True)
 
         # ===============================
         # 시험에 저장된 단답형 정답 표시
