@@ -251,22 +251,56 @@ def show_debug_page():
             is_correct = str(val).strip() == "1"
 
         # ===============================
-        # 객관식 채점 (OR 지원)
+        # 객관식 채점
         # ===============================
         else:
 
-            correct_list = []
+            correct_raw = correct
 
-            for c in correct:
-
-                if isinstance(c, str) and "or" in c:
-                    correct_list.extend([x.strip() for x in c.split("or")])
-                else:
-                    correct_list.append(str(c))
+            if not isinstance(correct_raw, list):
+                correct_raw = [correct_raw]
 
             selected_list = [str(x) for x in selected]
 
-            is_correct = any(s in correct_list for s in selected_list)
+            # -----------------------------
+            # OR 정답
+            # -----------------------------
+            if any("or" in str(c) for c in correct_raw):
+
+                correct_list = []
+
+                for c in correct_raw:
+                    if "or" in str(c):
+                        correct_list.extend([x.strip() for x in str(c).split("or")])
+                    else:
+                        correct_list.append(str(c))
+
+                is_correct = any(s in correct_list for s in selected_list)
+
+                answer_mode = "or"
+
+            # -----------------------------
+            # 복수 정답 (,)
+            # -----------------------------
+            elif len(correct_raw) > 1:
+
+                correct_list = [str(x) for x in correct_raw]
+
+                # ⭐ 핵심
+                is_correct = set(selected_list) == set(correct_list)
+
+                answer_mode = "multi"
+
+            # -----------------------------
+            # 단일 정답
+            # -----------------------------
+            else:
+
+                correct_list = [str(correct_raw[0])]
+
+                is_correct = correct_list == selected_list
+
+                answer_mode = "single"
 
 
         # ===============================
@@ -325,53 +359,47 @@ def show_debug_page():
 
             bubble_id = str(i + 1)
 
-            # -----------------------------
             # OR 문제
-            # -----------------------------
             if answer_mode == "or":
 
                 if bubble_id in selected_list and bubble_id in correct_list:
-                    color = (0, 255, 0)   # 초록 (맞은 선택)
-
-                elif bubble_id in selected_list:
-                    color = (0, 255, 255) # 노랑 (틀린 선택)
+                    color = (0,255,0)   # 초록 (맞은 선택)
 
                 elif bubble_id in correct_list:
-                    color = (255, 200, 0) # 연한 파랑 (OR 정답 후보)
+                    color = (255,200,0) # 하늘색 (OR 다른 정답)
+
+                elif bubble_id in selected_list:
+                    color = (0,255,255) # 노랑 (틀린 선택)
 
                 else:
                     continue
 
-            # -----------------------------
             # 복수 정답
-            # -----------------------------
             elif answer_mode == "multi":
 
                 if bubble_id in selected_list and bubble_id in correct_list:
-                    color = (0, 255, 0)
+                    color = (0,255,0)
 
                 elif bubble_id in correct_list:
-                    color = (255, 0, 0)
+                    color = (255,0,0)
 
                 elif bubble_id in selected_list:
-                    color = (0, 255, 255)
+                    color = (0,255,255)
 
                 else:
                     continue
 
-            # -----------------------------
             # 단일 정답
-            # -----------------------------
             else:
 
                 if bubble_id in selected_list and bubble_id in correct_list:
-                    color = (0, 255, 0)
+                    color = (0,255,0)
 
                 elif bubble_id in correct_list:
-                    color = (255, 0, 0)
+                    color = (255,0,0)
 
                 elif bubble_id in selected_list:
-                    color = (0, 255, 255)
+                    color = (0,255,255)
 
                 else:
                     continue
