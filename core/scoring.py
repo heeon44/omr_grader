@@ -17,46 +17,65 @@ def grade_student(row, exam):
         student_answer = student_answer.strip() if student_answer else ""
 
         # -------------------------------------------------
-        # 객관식
+        # 객관식 채점
         # -------------------------------------------------
         if q_type == "mcq":
 
             student_set = set(student_answer.split(",")) if student_answer else set()
-            correct_set = set(correct)
 
-            # 복수정답 허용
-            if student_set and student_set.issubset(correct_set):
+            # OR 정답 (예: 1 or 2)
+            if isinstance(correct, str) and "or" in correct:
 
-                row[f"{q}번"] = "O"
-                total_score += scores.get(str(q), 1)
+                correct_options = {
+                    x.strip() for x in correct.split("or")
+                }
 
+                if student_set & correct_options:
+
+                    row[f"{q}번"] = "O"
+                    total_score += scores.get(str(q), 1)
+
+                else:
+
+                    row[f"{q}번"] = "X"
+                    wrong_questions.append(str(q))
+
+            # AND 정답 (예: 1,2)
             else:
 
-                row[f"{q}번"] = "X"
-                wrong_questions.append(str(q))
+                if isinstance(correct, str):
+                    correct_set = {x.strip() for x in correct.split(",")}
+                else:
+                    correct_set = set(correct)
+
+                if student_set == correct_set:
+
+                    row[f"{q}번"] = "O"
+                    total_score += scores.get(str(q), 1)
+
+                else:
+
+                    row[f"{q}번"] = "X"
+                    wrong_questions.append(str(q))
 
         # -------------------------------------------------
-        # 단답형
+        # 단답형 (자동 채점 안 함)
         # -------------------------------------------------
         elif q_type == "short":
 
-            # 학생 답 그대로 표시
             row[f"{q}번"] = student_answer
-
-            # 자동 채점 X (수기 채점 예정)
 
         else:
 
             row[f"{q}번"] = ""
 
-        # 학생답 컬럼 제거
+        # 학생답 원본 제거
         if f"{q}번_학생답" in row:
             del row[f"{q}번_학생답"]
 
     # -------------------------------------------------
     # 영역 점수 계산 (객관식만)
     # -------------------------------------------------
-
     for sec_id, sec in sections.items():
 
         sec_name = sec.get("name", f"영역{sec_id}")
