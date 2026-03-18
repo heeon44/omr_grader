@@ -270,6 +270,47 @@ def show_template_manager():
                 file_name=selected_template
             )
 
+        # ----------------------------
+        # 템플릿 업로드 복원
+        # ----------------------------
+
+        st.markdown("### 📤 템플릿 업로드 복원")
+
+        uploaded_template = st.file_uploader(
+            "백업 템플릿 업로드",
+            type=["png", "jpg", "jpeg"]
+        )
+
+        if uploaded_template is not None:
+
+            exam_names = list(exams.keys())
+
+            target_exam = st.selectbox(
+                "적용할 시험 선택",
+                exam_names
+            )
+
+            if st.button("템플릿 적용"):
+
+                save_path = os.path.join(
+                    TEMPLATE_DIR,
+                    f"{target_exam}.png"
+                )
+
+                with open(save_path, "wb") as f:
+                    f.write(uploaded_template.read())
+
+                exam = exams[target_exam]
+
+                exam["template_path"] = save_path
+
+                update_exam(target_exam, exam)
+
+                st.success("템플릿 복원 완료")
+
+                st.rerun()
+
+    
     # ==================================================
     # 템플릿 편집
     # ==================================================
