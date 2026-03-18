@@ -121,6 +121,10 @@ def show_debug_page():
             page_answers = {}
 
             for q in range(1, exam["num_questions"] + 1):
+                
+                answer_mode = "single"
+                correct_list = []
+                selected_list = []
 
                 if str(q) not in layout.get("y_ranges", {}):
                     continue
