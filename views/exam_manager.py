@@ -1,9 +1,6 @@
 import streamlit as st
 import json
 import copy
-import io
-import zipfile
-import os
 
 from core.database import load_exams, add_exam, update_exam, delete_exam, save_exams
 
@@ -55,7 +52,11 @@ def show_exam_manager():
 
     exams = load_exams()
 
-    tab1, tab2 = st.tabs(["📚 시험 목록", "✏ 시험 등록 / 수정"])
+    tab1, tab2, tab3 = st.tabs([
+        "📚 시험 목록",
+        "➕ 시험 등록",
+        "✏ 시험 수정"
+    ])
 
     # ==================================================
     # 시험 목록
@@ -84,29 +85,24 @@ def show_exam_manager():
 
                     col1, col2, col3 = st.columns(3)
 
-                    # 삭제
                     if col1.button("삭제", key=f"del_{name}"):
 
                         delete_exam(name)
 
                         st.rerun()
 
-                    # 복사
                     if col2.button("복사", key=f"copy_{name}"):
 
                         new_copy_name = generate_copy_name(name, exams)
 
-                        copied_exam = copy.deepcopy(exam)
-
-                        exams[new_copy_name] = copied_exam
+                        exams[new_copy_name] = copy.deepcopy(exam)
 
                         save_exams(exams)
 
-                        st.success(f"{new_copy_name} 생성 완료")
+                        st.success("복사 완료")
 
                         st.rerun()
 
-                    # 이름 변경
                     if col3.button("이름 변경", key=f"rename_btn_{name}"):
 
                         if new_name in exams and new_name != name:
@@ -123,18 +119,8 @@ def show_exam_manager():
 
                             st.rerun()
 
-        # ==================================================
-        # 시험 백업
-        # ==================================================
-
         st.markdown("---")
         st.subheader("📦 시험자료 백업 / 복원")
-
-        exams = load_exams()
-
-        # ----------------------------
-        # 전체 시험 다운로드
-        # ----------------------------
 
         backup_json = json.dumps(
             exams,
@@ -149,10 +135,6 @@ def show_exam_manager():
             mime="application/json"
         )
 
-        # ----------------------------
-        # 선택 시험 다운로드
-        # ----------------------------
-
         st.markdown("### 📂 선택 시험 다운로드")
 
         exam_names = list(exams.keys())
@@ -161,7 +143,8 @@ def show_exam_manager():
 
             selected_exam = st.selectbox(
                 "다운로드할 시험 선택",
-                exam_names
+                exam_names,
+                key="exam_backup_select"
             )
 
             single_exam = {selected_exam: exams[selected_exam]}
@@ -178,10 +161,6 @@ def show_exam_manager():
                 file_name=f"{selected_exam}.json",
                 mime="application/json"
             )
-
-        # ----------------------------
-        # 시험 복원
-        # ----------------------------
 
         st.markdown("### 📤 시험자료 JSON 업로드 복원")
 
@@ -209,81 +188,47 @@ def show_exam_manager():
                 st.error(f"복원 실패: {e}")
 
     # ==================================================
-    # 시험 등록 / 수정
+    # 시험 등록
     # ==================================================
 
     with tab2:
 
-        exam_names = ["새 시험 등록"] + list(exams.keys())
+        st.subheader("➕ 새 시험 등록")
 
-        selected_exam = st.selectbox(
-            "시험 선택",
-            exam_names
-        )
-
-        if selected_exam == "새 시험 등록":
-
-            exam_data = {}
-
-            exam_name = st.text_input("시험 이름")
-
-        else:
-
-            exam_data = exams[selected_exam]
-
-            exam_name = st.text_input(
-                "시험 이름",
-                value=selected_exam
-            )
+        exam_name = st.text_input("시험 이름")
 
         num_questions = st.number_input(
             "문항 수",
             min_value=1,
-            value=exam_data.get("num_questions", 20)
+            value=20
         )
-
-        st.markdown("### 📝 문항 설정")
 
         answers = {}
         scores = {}
 
+        st.markdown("### 📝 문항 설정")
+
         for q in range(1, num_questions + 1):
-
-            raw_data = exam_data.get("answers", {}).get(str(q), {})
-
-            if isinstance(raw_data, list):
-                default_data = {"type": "mcq", "answer": raw_data}
-
-            elif isinstance(raw_data, dict):
-                default_data = raw_data
-
-            else:
-                default_data = {"type": "mcq", "answer": []}
 
             col1, col2, col3 = st.columns([1,2,1])
 
-            q_type = col1.selectbox(
+            q_type_label = col1.selectbox(
                 f"{q}번 유형",
-                ["mcq", "short"],
-                index=0 if default_data.get("type","mcq") == "mcq" else 1,
-                key=f"type_{q}"
+                ["객관식", "단답식"],
+                key=f"new_type_{q}"
             )
 
-            if q_type == "mcq":
-                default_ans = ",".join(default_data.get("answer", []))
-            else:
-                default_ans = default_data.get("answer","")
+            q_type = "mcq" if q_type_label == "객관식" else "short"
 
             ans_input = col2.text_input(
                 f"{q}번 정답",
-                value=default_ans,
-                key=f"ans_{q}"
+                key=f"new_ans_{q}"
             )
 
             score = col3.number_input(
                 f"{q}번 배점",
-                value=exam_data.get("scores",{}).get(str(q),1),
-                key=f"score_{q}"
+                value=1,
+                key=f"new_score_{q}"
             )
 
             if q_type == "mcq":
@@ -291,78 +236,138 @@ def show_exam_manager():
             else:
                 answer_value = ans_input.strip()
 
-            answers[str(q)] = {"type":q_type,"answer":answer_value}
+            answers[str(q)] = {"type": q_type, "answer": answer_value}
             scores[str(q)] = score
 
-        st.markdown("### 📂 영역 설정")
-
-        existing_sections = exam_data.get("sections",{})
-
-        default_section_count = len(existing_sections) if existing_sections else 1
-
-        num_sections = st.number_input(
-            "영역 개수",
-            min_value=1,
-            value=default_section_count
-        )
-
-        sections = {}
-
-        for i in range(1,int(num_sections)+1):
-
-            default_sec = existing_sections.get(str(i),{})
-
-            sec_name = st.text_input(
-                f"{i}번 영역 이름",
-                value=default_sec.get("name",""),
-                key=f"secname_{i}"
-            )
-
-            default_range=""
-
-            if default_sec.get("questions"):
-                default_range=",".join(map(str,default_sec["questions"]))
-
-            sec_q = st.text_input(
-                f"{i}번 영역 문항 범위 (예: 1-5,7,9)",
-                value=default_range,
-                key=f"secq_{i}"
-            )
-
-            sections[str(i)] = {
-                "name":sec_name,
-                "questions":parse_question_range(sec_q)
-            }
-
-        if st.button("💾 저장"):
+        if st.button("시험 등록"):
 
             new_data = {
-                "num_questions":num_questions,
-                "answers":answers,
-                "scores":scores,
-                "sections":sections,
-                "layout":exam_data.get("layout",{}),
-                "template_path":exam_data.get("template_path","")
+                "num_questions": num_questions,
+                "answers": answers,
+                "scores": scores,
+                "sections": {},
+                "layout": {},
+                "template_path": ""
             }
 
-            if selected_exam == "새 시험 등록":
+            add_exam(exam_name, new_data)
 
-                add_exam(exam_name,new_data)
+            st.success("시험 등록 완료")
+
+            st.rerun()
+
+    # ==================================================
+    # 시험 수정
+    # ==================================================
+
+    with tab3:
+
+        st.subheader("✏ 시험 수정")
+
+        exam_names = list(exams.keys())
+
+        if not exam_names:
+
+            st.warning("수정할 시험이 없습니다.")
+
+            return
+
+        selected_exam = st.selectbox(
+            "시험 선택",
+            exam_names
+        )
+
+        exam_data = exams[selected_exam]
+
+        exam_name = st.text_input(
+            "시험 이름",
+            value=selected_exam
+        )
+
+        num_questions = st.number_input(
+            "문항 수",
+            min_value=1,
+            value=exam_data.get("num_questions",20)
+        )
+
+        answers = {}
+        scores = {}
+
+        st.markdown("### 📝 문항 설정")
+
+        for q in range(1, num_questions + 1):
+
+            raw_data = exam_data.get("answers", {}).get(str(q), {})
+
+            if isinstance(raw_data, dict):
+
+                default_type = raw_data.get("type","mcq")
+
+                default_ans = raw_data.get("answer",[])
 
             else:
 
-                if exam_name != selected_exam:
+                default_type = "mcq"
 
-                    exams[exam_name] = new_data
+                default_ans = raw_data
 
-                    del exams[selected_exam]
+            col1, col2, col3 = st.columns([1,2,1])
 
-                    save_exams(exams)
+            q_type_label = col1.selectbox(
+                f"{q}번 유형",
+                ["객관식","단답식"],
+                index=0 if default_type == "mcq" else 1,
+                key=f"{selected_exam}_type_{q}"
+            )
 
-                else:
+            q_type = "mcq" if q_type_label == "객관식" else "short"
 
-                    update_exam(exam_name,new_data)
+            if q_type == "mcq":
+                default_ans = ",".join(default_ans)
 
-            st.success("저장 완료")
+            ans_input = col2.text_input(
+                f"{q}번 정답",
+                value=default_ans,
+                key=f"{selected_exam}_ans_{q}"
+            )
+
+            score = col3.number_input(
+                f"{q}번 배점",
+                value=exam_data.get("scores",{}).get(str(q),1),
+                key=f"{selected_exam}_score_{q}"
+            )
+
+            if q_type == "mcq":
+                answer_value = [x.strip() for x in ans_input.split(",")] if ans_input else []
+            else:
+                answer_value = ans_input.strip()
+
+            answers[str(q)] = {"type": q_type, "answer": answer_value}
+            scores[str(q)] = score
+
+        if st.button("시험 수정 저장"):
+
+            new_data = {
+                "num_questions": num_questions,
+                "answers": answers,
+                "scores": scores,
+                "sections": exam_data.get("sections", {}),
+                "layout": exam_data.get("layout", {}),
+                "template_path": exam_data.get("template_path", "")
+            }
+
+            if exam_name != selected_exam:
+
+                exams[exam_name] = new_data
+
+                del exams[selected_exam]
+
+                save_exams(exams)
+
+            else:
+
+                update_exam(selected_exam, new_data)
+
+            st.success("수정 완료")
 
             st.rerun()
