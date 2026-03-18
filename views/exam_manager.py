@@ -128,109 +128,79 @@ def show_exam_manager():
         # ==================================================
 
         st.markdown("---")
-        st.subheader("📦 시험 백업")
+        st.subheader("📦 시험자료 백업 / 복원")
 
-        zip_buffer = io.BytesIO()
+        exams = load_exams()
 
-        with zipfile.ZipFile(zip_buffer, "w") as z:
+        # ----------------------------
+        # 전체 시험 다운로드
+        # ----------------------------
 
-            exams_json = json.dumps(
-                exams,
-                ensure_ascii=False,
-                indent=2
-            ).encode("utf-8")
-
-            z.writestr("exams_backup.json", exams_json)
-
-        st.download_button(
-            "📥 전체 시험 ZIP 다운로드",
-            data=zip_buffer.getvalue(),
-            file_name="exam_full_backup.zip",
-            mime="application/zip"
+        backup_json = json.dumps(
+            exams,
+            ensure_ascii=False,
+            indent=2
         )
 
-        st.markdown("### 📂 선택 시험 백업")
+        st.download_button(
+            label="📥 전체 시험자료 JSON 다운로드",
+            data=backup_json,
+            file_name="exam_backup.json",
+            mime="application/json"
+        )
+
+        # ----------------------------
+        # 선택 시험 다운로드
+        # ----------------------------
+
+        st.markdown("### 📂 선택 시험 다운로드")
 
         exam_names = list(exams.keys())
 
         if exam_names:
 
             selected_exam = st.selectbox(
-                "백업할 시험 선택",
+                "다운로드할 시험 선택",
                 exam_names
             )
 
-            if selected_exam:
+            single_exam = {selected_exam: exams[selected_exam]}
 
-                zip_buffer = io.BytesIO()
+            exam_json = json.dumps(
+                single_exam,
+                ensure_ascii=False,
+                indent=2
+            )
 
-                with zipfile.ZipFile(zip_buffer, "w") as z:
+            st.download_button(
+                label="📥 선택 시험 다운로드",
+                data=exam_json,
+                file_name=f"{selected_exam}.json",
+                mime="application/json"
+            )
 
-                    single_exam = {
-                        selected_exam: exams[selected_exam]
-                    }
+        # ----------------------------
+        # 시험 복원
+        # ----------------------------
 
-                    exam_json = json.dumps(
-                        single_exam,
-                        ensure_ascii=False,
-                        indent=2
-                    ).encode("utf-8")
+        st.markdown("### 📤 시험자료 JSON 업로드 복원")
 
-                    z.writestr("exam_backup.json", exam_json)
-
-                st.download_button(
-                    "📥 선택 시험 ZIP 다운로드",
-                    data=zip_buffer.getvalue(),
-                    file_name=f"{selected_exam}_backup.zip",
-                    mime="application/zip"
-                )
-
-        st.markdown("### 📤 시험 ZIP 복원")
-
-        uploaded_zip = st.file_uploader(
-            "시험 백업 ZIP 업로드",
-            type=["zip"]
+        uploaded_backup = st.file_uploader(
+            "시험자료 JSON 업로드",
+            type=["json"]
         )
 
-        if uploaded_zip is not None:
+        if uploaded_backup is not None:
 
             try:
 
-                with zipfile.ZipFile(uploaded_zip, "r") as z:
+                data = json.load(uploaded_backup)
 
-                    z.extractall(".")
+                exams.update(data)
 
-                if os.path.exists("exams_backup.json"):
+                save_exams(exams)
 
-                    with open(
-                        "exams_backup.json",
-                        "r",
-                        encoding="utf-8"
-                    ) as f:
-
-                        restored_exams = json.load(f)
-
-                    save_exams(restored_exams)
-
-                    os.remove("exams_backup.json")
-
-                if os.path.exists("exam_backup.json"):
-
-                    with open(
-                        "exam_backup.json",
-                        "r",
-                        encoding="utf-8"
-                    ) as f:
-
-                        restored_exam = json.load(f)
-
-                    exams.update(restored_exam)
-
-                    save_exams(exams)
-
-                    os.remove("exam_backup.json")
-
-                st.success("시험 복원 완료")
+                st.success("시험자료 복원 완료")
 
                 st.rerun()
 
