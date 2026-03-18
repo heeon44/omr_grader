@@ -466,7 +466,7 @@ def show_debug_page():
     col_img, col_edit = st.columns([3.5, 1.5], gap="small")
 
     with col_img:
-        st.image(debug_img, channels="BGR", width=850)
+        st.image(debug_img, channels="BGR", width=600)
 
     with col_edit:
         st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
