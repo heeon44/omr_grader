@@ -214,12 +214,16 @@ def show_template_manager():
         st.markdown("---")
         st.subheader("📦 템플릿 백업")
 
-        zip_buffer = io.BytesIO()
+        # ----------------------------
+        # 전체 백업 ZIP 다운로드
+        # ----------------------------
 
+        zip_buffer = io.BytesIO()
         exam_backup_file = create_exam_backup_file()
 
         with zipfile.ZipFile(zip_buffer, "w") as z:
 
+            # 템플릿 이미지 전체
             for root, dirs, files in os.walk(TEMPLATE_DIR):
 
                 for file in files:
@@ -234,6 +238,7 @@ def show_template_manager():
                         )
                     )
 
+            # 시험 JSON
             z.write(
                 exam_backup_file,
                 arcname="exams_backup.json"
@@ -246,69 +251,97 @@ def show_template_manager():
             mime="application/zip"
         )
 
-        template_files = os.listdir(TEMPLATE_DIR)
-
-        if template_files:
-
-            selected_template = st.selectbox(
-                "다운로드할 템플릿",
-                template_files
-            )
-
-            path = os.path.join(
-                TEMPLATE_DIR,
-                selected_template
-            )
-
-            with open(path, "rb") as f:
-
-                data = f.read()
-
-            st.download_button(
-                "📥 선택 다운로드",
-                data=data,
-                file_name=selected_template
-            )
-
         # ----------------------------
-        # 템플릿 업로드 복원
+        # 선택 템플릿 ZIP 다운로드
         # ----------------------------
 
-        st.markdown("### 📤 템플릿 업로드 복원")
+        st.markdown("### 📂 선택 템플릿 백업")
 
-        uploaded_template = st.file_uploader(
-            "백업 템플릿 업로드",
-            type=["png", "jpg", "jpeg"]
+        exam_names = list(exams.keys())
+
+        selected_exam = st.selectbox(
+            "백업할 시험 선택",
+            exam_names
         )
 
-        if uploaded_template is not None:
+        if selected_exam:
 
-            exam_names = list(exams.keys())
+            zip_buffer = io.BytesIO()
 
-            target_exam = st.selectbox(
-                "적용할 시험 선택",
-                exam_names
+            with zipfile.ZipFile(zip_buffer, "w") as z:
+
+                exam = exams[selected_exam]
+
+                # 템플릿 이미지
+                if exam.get("template_path") and os.path.exists(exam["template_path"]):
+
+                    z.write(
+                        exam["template_path"],
+                        arcname=os.path.join(
+                            "templates",
+                            os.path.basename(exam["template_path"])
+                        )
+                    )
+
+                # 시험 JSON (좌표 포함)
+                temp_json = {selected_exam: exam}
+
+                json_bytes = json.dumps(
+                    temp_json,
+                    ensure_ascii=False,
+                    indent=2
+                ).encode("utf-8")
+
+                z.writestr("exam_template.json", json_bytes)
+
+            st.download_button(
+                "📥 선택 템플릿 ZIP 다운로드",
+                data=zip_buffer.getvalue(),
+                file_name=f"{selected_exam}_template_backup.zip",
+                mime="application/zip"
             )
 
-            if st.button("템플릿 적용"):
+        # ----------------------------
+        # ZIP 업로드 복원
+        # ----------------------------
 
-                save_path = os.path.join(
-                    TEMPLATE_DIR,
-                    f"{target_exam}.png"
-                )
+        st.markdown("### 📤 템플릿 ZIP 복원")
 
-                with open(save_path, "wb") as f:
-                    f.write(uploaded_template.read())
+        uploaded_zip = st.file_uploader(
+            "템플릿 백업 ZIP 업로드",
+            type=["zip"]
+        )
 
-                exam = exams[target_exam]
+        if uploaded_zip is not None:
 
-                exam["template_path"] = save_path
+            try:
 
-                update_exam(target_exam, exam)
+                with zipfile.ZipFile(uploaded_zip, "r") as z:
+                    z.extractall(".")
 
-                st.success("템플릿 복원 완료")
+                if os.path.exists("exam_template.json"):
+
+                    with open(
+                        "exam_template.json",
+                        "r",
+                        encoding="utf-8"
+                    ) as f:
+
+                        restored_exam = json.load(f)
+
+                    exams.update(restored_exam)
+
+                    save_exams(exams)
+
+                    os.remove("exam_template.json")
+
+                st.success("템플릿 + 좌표 복원 완료")
 
                 st.rerun()
+
+            except Exception as e:
+
+                st.error(f"복원 실패: {e}")
 
     
     # ==================================================
