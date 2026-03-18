@@ -248,6 +248,35 @@ def show_exam_manager():
             answers[str(q)] = {"type": q_type, "answer": answer_value}
             scores[str(q)] = score
 
+        st.markdown("### 📊 영역 설정")
+
+        new_sections = {}
+
+        num_sections = st.number_input(
+            "영역 수",
+            min_value=0,
+            value=0,
+            step=1,
+            key="new_section_count"
+        )
+
+        for i in range(num_sections):
+
+            col1, col2 = st.columns([2,3])
+
+            name = col1.text_input(
+                f"영역 {i+1} 이름",
+                key=f"new_section_name_{i}"
+            )
+
+            q_range = col2.text_input(
+                f"문항 범위 (예: 1-5,7,9)",
+                key=f"new_section_range_{i}"
+            )
+
+            if name and q_range:
+                new_sections[name] = parse_question_range(q_range)
+
         if st.button("시험 등록"):
 
             new_data = {
@@ -374,13 +403,55 @@ def show_exam_manager():
 
         st.markdown("---")
 
+        st.markdown("### 📊 영역 설정")
+
+        sections = exam_data.get("sections", {})
+        new_sections = {}
+
+        section_names = list(sections.keys())
+
+        num_sections = st.number_input(
+            "영역 수",
+            min_value=0,
+            value=len(section_names),
+            step=1,
+            key="edit_section_count"
+        )
+
+        for i in range(num_sections):
+
+            col1, col2 = st.columns([2,3])
+
+            default_name = section_names[i] if i < len(section_names) else ""
+            default_range = ""
+
+            if i < len(section_names):
+                q_list = sections[section_names[i]]
+                default_range = ",".join(map(str, q_list))
+
+            name = col1.text_input(
+                f"영역 {i+1} 이름",
+                value=default_name,
+                key=f"edit_section_name_{i}"
+            )
+
+            q_range = col2.text_input(
+                f"문항 범위 (예: 1-5,7,9)",
+                value=default_range,
+                key=f"edit_section_range_{i}"
+            )
+
+            if name and q_range:
+                new_sections[name] = parse_question_range(q_range)
+                
+
         if st.button("시험 수정 저장"):
 
             new_data = {
                 "num_questions": num_questions,
                 "answers": answers,
                 "scores": scores,
-                "sections": exam_data.get("sections", {}),
+                "sections": new_sections, 
                 "layout": exam_data.get("layout", {}),
                 "template_path": exam_data.get("template_path", "")
             }
