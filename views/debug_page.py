@@ -1,16 +1,86 @@
 import streamlit as st
 import cv2
 import numpy as np
-import fitz
+import fitz  # 🔥 PyMuPDF
 import pandas as pd
 import io
 
 from core.database import load_exams
 from core.omr_engine import align_images_orb, detect_answer
 
+# ===============================
+# 자동 기울기 보정
+# ===============================
+def auto_deskew(image):
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edged = cv2.Canny(blur, 50, 150)
+
+    contours, _ = cv2.findContours(
+        edged,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if not contours:
+        return image
+
+    largest = max(contours, key=cv2.contourArea)
+    peri = cv2.arcLength(largest, True)
+    approx = cv2.approxPolyDP(largest, 0.02 * peri, True)
+
+    if len(approx) != 4:
+        return image
+
+    pts = approx.reshape(4, 2)
+    rect = np.zeros((4, 2), dtype="float32")
+
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+
+    (tl, tr, br, bl) = rect
+
+    widthA = np.linalg.norm(br - bl)
+    widthB = np.linalg.norm(tr - tl)
+    maxWidth = int(max(widthA, widthB))
+
+    heightA = np.linalg.norm(tr - br)
+    heightB = np.linalg.norm(tl - bl)
+    maxHeight = int(max(heightA, heightB))
+
+    dst = np.array([
+        [0, 0],
+        [maxWidth - 1, 0],
+        [maxWidth - 1, maxHeight - 1],
+        [0, maxHeight - 1]
+    ], dtype="float32")
+
+    M = cv2.getPerspectiveTransform(rect, dst)
+    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+
+    return warped
+
 
 # ===============================
-# Excel 저장
+# 모바일 대비 강화
+# ===============================
+def enhance_mobile_image(img):
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+    cl = clahe.apply(gray)
+    blur = cv2.GaussianBlur(cl, (5, 5), 0)
+
+    return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
+
+# ===============================
+# Excel 저장 함수
 # ===============================
 def generate_answer_excel():
 
@@ -43,10 +113,6 @@ def generate_answer_excel():
 
     return output.getvalue(), exam_name
 
-
-# ===============================
-# Debug Page
-# ===============================
 def show_debug_page():
 
     st.header("🔍 답안 채점")
@@ -65,7 +131,6 @@ def show_debug_page():
 
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
-    start_grading = st.button("채점 시작")
 
     # =====================================================
     # 채점 실행
