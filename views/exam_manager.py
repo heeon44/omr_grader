@@ -114,6 +114,73 @@ def show_exam_manager():
                             st.success("이름 변경 완료")
                             st.rerun()
 
+        st.markdown("---")
+        st.subheader("📦 시험자료 백업 / 복원")
+
+        backup_json = json.dumps(
+            exams,
+            ensure_ascii=False,
+            indent=2
+        )
+
+        st.download_button(
+            label="📥 전체 시험자료 JSON 다운로드",
+            data=backup_json,
+            file_name="exam_backup.json",
+            mime="application/json"
+        )
+
+        st.markdown("### 📂 선택 시험 다운로드")
+
+        exam_names = list(exams.keys())
+
+        if exam_names:
+
+            selected_exam = st.selectbox(
+                "다운로드할 시험 선택",
+                exam_names,
+                key="exam_backup_select"
+            )
+
+            single_exam = {selected_exam: exams[selected_exam]}
+
+            exam_json = json.dumps(
+                single_exam,
+                ensure_ascii=False,
+                indent=2
+            )
+
+            st.download_button(
+                label="📥 선택 시험 다운로드",
+                data=exam_json,
+                file_name=f"{selected_exam}.json",
+                mime="application/json"
+            )
+
+        st.markdown("### 📤 시험자료 JSON 업로드 복원")
+
+        uploaded_backup = st.file_uploader(
+            "시험자료 JSON 업로드",
+            type=["json"]
+        )
+
+        if uploaded_backup is not None:
+
+            try:
+
+                data = json.load(uploaded_backup)
+
+                exams.update(data)
+
+                save_exams(exams)
+
+                st.success("시험자료 복원 완료")
+                st.rerun()
+
+            except Exception as e:
+
+                st.error(f"복원 실패: {e}")
+
     # ==================================================
     # 시험 등록
     # ==================================================
