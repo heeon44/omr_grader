@@ -131,12 +131,14 @@ def show_debug_page():
 
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
+    # =====================================================
+    # 🔥 채점 시작 (최초 1회만 실행)
+    # =====================================================
+    start_grading = st.button("채점 시작")
 
-    # =====================================================
-    # 채점 실행
-    # =====================================================
     if uploaded_pdf and start_grading:
 
+        # 🔥 이미 채점된 상태라면 초기화
         if "aligned_pages" in st.session_state:
             del st.session_state["aligned_pages"]
             del st.session_state["answers"]
@@ -159,11 +161,13 @@ def show_debug_page():
 
             pages.append(img)
 
+        # 세션 초기화 (최초 채점용)
         st.session_state.answers = {}
         st.session_state.aligned_pages = {}
         st.session_state.current_page = 0
         st.session_state.exam_name = exam_name
 
+        # 템플릿 로딩
         stream = np.fromfile(exam["template_path"], np.uint8)
         template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
         template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
@@ -171,7 +175,7 @@ def show_debug_page():
         layout = exam["layout"]
 
         # =====================================================
-        # 자동 채점
+        # 🔥 전체 자동채점 실행
         # =====================================================
         for idx, page_img in enumerate(pages):
 
@@ -182,12 +186,9 @@ def show_debug_page():
                 continue
 
             aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
-
             page_answers = {}
 
             for q in range(1, exam["num_questions"] + 1):
-
-                answer_mode = "single"
 
                 if str(q) not in layout.get("y_ranges", {}):
                     continue
@@ -202,73 +203,43 @@ def show_debug_page():
                 y1, y2 = layout["y_ranges"][str(q)]
 
                 correct = exam["answers"][str(q)]["answer"]
-                q_type = exam["answers"][str(q)].get("type", "mc")
+                expected = len(correct)
 
-                if q_type == "short":
-
-                    selected = []
-
-                else:
-
-                    if not isinstance(correct, list):
-                        correct_raw = [correct]
-                    else:
-                        correct_raw = correct
-
-                    if any("or" in str(c) for c in correct_raw):
-
-                        expected = 1
-
-                    elif len(correct_raw) > 1:
-
-                        expected = len(correct_raw)
-
-                    else:
-
-                        expected = 1
-
-                    selected, _ = detect_answer(
-                        template_gray,
-                        aligned_gray,
-                        x_bounds,
-                        y1,
-                        y2,
-                        expected
-                    )
+                selected, _ = detect_answer(
+                    template_gray,
+                    aligned_gray,
+                    x_bounds,
+                    y1,
+                    y2,
+                    expected
+                )
 
                 page_answers[q] = selected
 
-            # ⭐⭐⭐ 핵심 수정 (idx 대신 page_id)
-            page_id = len(st.session_state.aligned_pages)
+            st.session_state.answers[idx] = page_answers
+            st.session_state.aligned_pages[idx] = aligned
 
-            st.session_state.answers[page_id] = page_answers
-            st.session_state.aligned_pages[page_id] = aligned
+        st.success("채점 완료!")
+        st.rerun()
 
     # =====================================================
-    # 채점 결과 없으면 종료
+    # 🔥 채점된 데이터 없으면 종료
     # =====================================================
     if "aligned_pages" not in st.session_state:
         return
-
+    # =====================================================
+    # 🔥 현재 페이지 선택
+    # =====================================================
     total_pages = len(st.session_state.aligned_pages)
-
-    # ⭐ 안전장치
-    if total_pages == 0:
-        st.error("OMR 정렬 실패 (template 매칭 실패)")
-        return
 
     if st.session_state.current_page >= total_pages:
         st.session_state.current_page = 0
 
     selected_page = st.session_state.current_page
 
-    # ⭐ 안전 접근
-    aligned = st.session_state.aligned_pages.get(selected_page)
+    aligned = st.session_state.aligned_pages[selected_page]
 
-    if aligned is None:
-        st.error("페이지 로딩 실패")
-        return
-
+    # 🔥 항상 최신 수정값 사용
     page_answers = st.session_state.answers.get(selected_page, {})
 
     layout = exam["layout"]
@@ -276,10 +247,8 @@ def show_debug_page():
     scores = exam.get("scores", {})
 
     debug_img = aligned.copy()
-
     total_score = 0
     section_scores = {sec_id: 0 for sec_id in sections}
-
 
     # =====================================================
     # 디버그 채점
