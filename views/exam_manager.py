@@ -227,7 +227,21 @@ def show_exam_manager():
             )
 
             if q_type == "mcq":
-                answer_value = ans_input.strip()
+
+                ans = ans_input.strip()
+
+                if "or" in ans:
+                    answer_value = [ans]
+
+                elif "," in ans:
+                    answer_value = [x.strip() for x in ans.split(",") if x.strip()]
+
+                elif ans:
+                    answer_value = [ans]
+
+                else:
+                    answer_value = []
+
             else:
                 answer_value = ans_input.strip()
 
@@ -250,6 +264,7 @@ def show_exam_manager():
             st.success("시험 등록 완료")
             st.rerun()
 
+
     # ==================================================
     # 시험 수정
     # ==================================================
@@ -258,7 +273,6 @@ def show_exam_manager():
 
         st.subheader("✏ 시험 수정")
 
-        # ⭐ 시험 목록 다시 불러오기
         exams = load_exams()
 
         if not exams:
@@ -268,7 +282,6 @@ def show_exam_manager():
 
         exam_names = list(exams.keys())
 
-        # ⭐ 시험 선택
         selected_exam = st.selectbox(
             "시험 선택",
             exam_names,
@@ -321,7 +334,9 @@ def show_exam_manager():
             q_type = "mcq" if q_type_label == "객관식" else "short"
 
             if q_type == "mcq":
-                default_ans = ",".join(default_ans)
+
+                if isinstance(default_ans, list):
+                    default_ans = ",".join(default_ans)
 
             ans_input = col2.text_input(
                 f"{q}번 정답",
@@ -336,7 +351,21 @@ def show_exam_manager():
             )
 
             if q_type == "mcq":
-                answer_value = ans_input.strip()
+
+                ans = ans_input.strip()
+
+                if "or" in ans:
+                    answer_value = [ans]
+
+                elif "," in ans:
+                    answer_value = [x.strip() for x in ans.split(",") if x.strip()]
+
+                elif ans:
+                    answer_value = [ans]
+
+                else:
+                    answer_value = []
+
             else:
                 answer_value = ans_input.strip()
 
