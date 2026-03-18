@@ -458,6 +458,50 @@ def show_debug_page():
                     2
                 )
 
+    # ===============================
+    # 시험에 저장된 단답형 정답 표시
+    # ===============================
+    short_questions = []
+
+    for q in range(1, exam["num_questions"] + 1):
+
+        q_data = exam["answers"].get(str(q), {})
+        q_type = q_data.get("type", "mc")
+
+        if q_type == "short":
+
+            correct = q_data.get("answer", "")
+
+            if isinstance(correct, list):
+                correct = ",".join(correct)
+
+            short_questions.append((q, correct))
+
+    if short_questions:
+
+        st.markdown("### ✏️ 단답형 정답")
+
+        for row_start in range(0, len(short_questions), 5):
+
+            cols = st.columns(5)
+
+            for i in range(5):
+
+                idx = row_start + i
+                if idx >= len(short_questions):
+                    continue
+
+                q, correct = short_questions[idx]
+
+                cols[i].text_input(
+                    f"Q{q}",
+                    value=str(correct),
+                    disabled=True,
+                    key=f"short_correct_{selected_page}_{q}"
+                )
+
+        st.markdown("---")
+    
     # =====================================================
     # 🔥 이미지 + 가로 5열 수정표
     # =====================================================
