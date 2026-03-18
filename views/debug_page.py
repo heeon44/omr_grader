@@ -132,7 +132,139 @@ def show_debug_page():
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
     # =====================================================
-    # 🔥 수정값 기준으로 이미지 & 점수 계산
+    # 🔥 채점 시작
+    # =====================================================
+    start_grading = st.button("채점 시작")
+
+    if uploaded_pdf and start_grading:
+
+        if "aligned_pages" in st.session_state:
+            del st.session_state["aligned_pages"]
+            del st.session_state["answers"]
+            del st.session_state["current_page"]
+
+        pdf_bytes = uploaded_pdf.read()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+        pages = []
+
+        for page_index in range(len(doc)):
+
+            page = doc[page_index]
+            pix = page.get_pixmap(dpi=200)
+
+            img = np.frombuffer(pix.samples, dtype=np.uint8)
+            img = img.reshape(pix.height, pix.width, pix.n)
+
+            if pix.n == 4:
+                img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+
+            pages.append(img)
+
+        st.session_state.answers = {}
+        st.session_state.aligned_pages = {}
+        st.session_state.current_page = 0
+        st.session_state.exam_name = exam_name
+
+        stream = np.fromfile(exam["template_path"], np.uint8)
+        template_img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
+        template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
+
+        layout = exam["layout"]
+
+        # =====================================================
+        # 🔥 자동 채점
+        # =====================================================
+        for idx, page_img in enumerate(pages):
+
+            student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
+            aligned = align_images_orb(template_img, student_img, layout)
+
+            if aligned is None:
+                continue
+
+            aligned_gray = cv2.cvtColor(aligned, cv2.COLOR_BGR2GRAY)
+
+            page_answers = {}
+
+            for q in range(1, exam["num_questions"] + 1):
+
+                if str(q) not in layout.get("y_ranges", {}):
+                    continue
+
+                col_index = ((q - 1) // layout["questions_per_column"]) + 1
+                col_index = str(min(col_index, len(layout["columns_x"])))
+
+                if col_index not in layout["columns_x"]:
+                    continue
+
+                x_bounds = layout["columns_x"][col_index]
+                y1, y2 = layout["y_ranges"][str(q)]
+
+                correct = exam["answers"][str(q)]["answer"]
+                expected = len(correct)
+
+                selected, _ = detect_answer(
+                    template_gray,
+                    aligned_gray,
+                    x_bounds,
+                    y1,
+                    y2,
+                    expected
+                )
+
+                page_answers[q] = selected
+
+            st.session_state.answers[idx] = page_answers
+            st.session_state.aligned_pages[idx] = aligned
+
+        st.success("채점 완료!")
+        st.rerun()
+
+    # =====================================================
+    # 채점 데이터 확인
+    # =====================================================
+    if "aligned_pages" not in st.session_state:
+        return
+
+    total_pages = len(st.session_state.aligned_pages)
+
+    if st.session_state.current_page >= total_pages:
+        st.session_state.current_page = 0
+
+    selected_page = st.session_state.current_page
+    aligned = st.session_state.aligned_pages[selected_page]
+
+    page_answers = st.session_state.answers.get(selected_page, {})
+
+    layout = exam["layout"]
+    sections = exam.get("sections", {})
+    scores = exam.get("scores", {})
+
+    debug_img = aligned.copy()
+    total_score = 0
+    section_scores = {sec_id: 0 for sec_id in sections}
+
+    # =====================================================
+    # 정답 판정 함수 (OR 지원)
+    # =====================================================
+    def check_answer(correct, selected):
+
+        if not isinstance(correct, list):
+            correct = [correct]
+
+        for c in correct:
+            if isinstance(c, str) and "or" in c:
+
+                options = [x.strip() for x in c.split("or")]
+
+                if any(opt in selected for opt in options):
+                    return True
+
+        return set(correct) == set(selected)
+
+    # =====================================================
+    # 채점 루프
     # =====================================================
     for q in range(1, exam["num_questions"] + 1):
 
@@ -154,25 +286,7 @@ def show_debug_page():
         selected = page_answers.get(q, [])
 
         # ===============================
-        # 🔥 OR 정답 처리
-        # ===============================
-        def check_answer(correct, selected):
-
-            if not isinstance(correct, list):
-                correct = [correct]
-
-            for c in correct:
-
-                if isinstance(c, str) and "or" in c:
-                    options = [x.strip() for x in c.split("or")]
-
-                    if any(opt in selected for opt in options):
-                        return True
-
-            return set(correct) == set(selected)
-
-        # ===============================
-        # 🔥 문항 타입별 채점
+        # 단답식 채점
         # ===============================
         if q_type == "short":
 
@@ -188,7 +302,7 @@ def show_debug_page():
             is_correct = check_answer(correct, selected)
 
         # ===============================
-        # 🔥 오답 문항 빨간 배경 표시
+        # 오답 표시
         # ===============================
         if not is_correct:
 
@@ -213,7 +327,7 @@ def show_debug_page():
                 )
 
         # ===============================
-        # 🔥 점수 계산
+        # 점수 계산
         # ===============================
         if is_correct:
 
@@ -225,7 +339,7 @@ def show_debug_page():
                     section_scores[sec_id] += scores.get(str(q), 1)
 
         # ===============================
-        # 🔥 객관식 버블 표시
+        # 객관식 버블 표시
         # ===============================
         if q_type == "mc":
 
@@ -272,7 +386,7 @@ def show_debug_page():
                 )
 
         # ===============================
-        # 🔥 문항 번호 표시
+        # 문항 표시
         # ===============================
         qx_ranges = layout.get("question_x_ranges", {})
         qx = qx_ranges.get(col_index)
@@ -289,9 +403,6 @@ def show_debug_page():
                 2
             )
 
-            # ===============================
-            # 🔥 단답식 정답 표시
-            # ===============================
             if q_type == "short":
 
                 cv2.putText(
@@ -304,61 +415,17 @@ def show_debug_page():
                     2
                 )
 
-        # ===============================
-        # 🔥 버블 색상 표시
-        # ===============================
-        for i in range(5):
-            if i + 1 >= len(x_bounds):
-                continue
+    # =====================================================
+    # 이미지 표시
+    # =====================================================
+    st.image(debug_img, channels="BGR", width=850)
 
-            bubble_id = str(i + 1)
+    st.markdown("### 총점")
 
-            if bubble_id in correct and bubble_id in selected:
-                color = (0, 255, 0)      # 🟢 정답 일치
-            elif bubble_id in correct:
-                color = (255, 0, 0)      # 🔵 정답
-            elif bubble_id in selected:
-                color = (0, 255, 255)    # 🟡 학생 선택
-            else:
-                continue
-
-            overlay = debug_img.copy()
-            cv2.rectangle(
-                overlay,
-                (x_bounds[i], y1),
-                (x_bounds[i + 1], y2),
-                color,
-                -1
-            )
-            debug_img = cv2.addWeighted(
-                overlay, 0.35,
-                debug_img, 0.65, 0
-            )
-
-            cv2.rectangle(
-                debug_img,
-                (x_bounds[i], y1),
-                (x_bounds[i + 1], y2),
-                color,
-                4
-            )
-
-        # ===============================
-        # 🔥 문항 번호 표시 (Q1, Q2 ...)
-        # ===============================
-        qx_ranges = layout.get("question_x_ranges", {})
-        qx = qx_ranges.get(col_index)
-
-        if qx:
-            cv2.putText(
-                debug_img,
-                f"Q{q}",
-                (qx[0], y1 - 5),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 0, 255),
-                2
-            )
+    st.markdown(
+        f"<h1 style='color:#2E8B57'>{total_score}점</h1>",
+        unsafe_allow_html=True
+    )
     # =====================================================
     # 🔥 이미지 + 가로 5열 수정표
     # =====================================================
