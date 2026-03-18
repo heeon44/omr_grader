@@ -507,6 +507,29 @@ def show_debug_page():
             st.rerun()
 
     # =====================================================
+    # 🔥 점수 표시 (수정값 기준)
+    # =====================================================
+    cols = st.columns(len(section_scores) + 1)
+
+    i = 0
+    for sec_id, score_val in section_scores.items():
+        sec_name = sections[sec_id]["name"]
+
+        cols[i].markdown(
+            f"<h3 style='text-align:center'>{sec_name}</h3>"
+            f"<h1 style='text-align:center'>{score_val}점</h1>",
+            unsafe_allow_html=True
+        )
+        i += 1
+
+    cols[i].markdown(
+        f"<h3 style='text-align:center'>총점</h3>"
+        f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
+        unsafe_allow_html=True
+    )
+
+
+    # =====================================================
     # 🔥 페이지 이동 버튼 (완전 양끝 정렬)
     # =====================================================
 
@@ -568,24 +591,3 @@ def show_debug_page():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     
-    # =====================================================
-    # 🔥 점수 표시 (수정값 기준)
-    # =====================================================
-    cols = st.columns(len(section_scores) + 1)
-
-    i = 0
-    for sec_id, score_val in section_scores.items():
-        sec_name = sections[sec_id]["name"]
-
-        cols[i].markdown(
-            f"<h3 style='text-align:center'>{sec_name}</h3>"
-            f"<h1 style='text-align:center'>{score_val}점</h1>",
-            unsafe_allow_html=True
-        )
-        i += 1
-
-    cols[i].markdown(
-        f"<h3 style='text-align:center'>총점</h3>"
-        f"<h1 style='text-align:center; color:#2E8B57'>{total_score}점</h1>",
-        unsafe_allow_html=True
-    )
