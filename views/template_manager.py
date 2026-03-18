@@ -130,6 +130,103 @@ def show_template_manager():
 
     tab1, tab2 = st.tabs(["📚 템플릿 목록", "✏ 템플릿 편집"])
 
+
+    # ==================================================
+    # 템플릿 백업 / 복원 (전역)
+    # ==================================================
+
+    st.markdown("---")
+    st.subheader("📦 템플릿 백업 / 복원")
+
+    zip_buffer = io.BytesIO()
+    exam_backup_file = create_exam_backup_file()
+
+    with zipfile.ZipFile(zip_buffer, "w") as z:
+
+        # 템플릿 이미지 전체 백업
+        for root, dirs, files in os.walk(TEMPLATE_DIR):
+            for file in files:
+                file_path = os.path.join(root, file)
+                z.write(
+                    file_path,
+                    arcname=os.path.join("templates", file)
+                )
+
+        # 시험 JSON 백업
+        z.write(
+            exam_backup_file,
+            arcname="exams_backup.json"
+        )
+
+    st.download_button(
+        "📥 전체 백업 ZIP 다운로드",
+        data=zip_buffer.getvalue(),
+        file_name="omr_full_backup.zip",
+        mime="application/zip"
+    )
+
+    # ----------------------------
+    # 개별 템플릿 다운로드
+    # ----------------------------
+    st.markdown("### 📂 템플릿 선택 다운로드")
+
+    template_files = os.listdir(TEMPLATE_DIR)
+
+    if template_files:
+
+        selected_template = st.selectbox(
+            "다운로드할 템플릿 선택",
+            template_files
+        )
+
+        template_path = os.path.join(
+            TEMPLATE_DIR,
+            selected_template
+        )
+
+        with open(template_path, "rb") as f:
+            template_bytes = f.read()
+
+        st.download_button(
+            "📥 선택 템플릿 다운로드",
+            data=template_bytes,
+            file_name=selected_template,
+            mime="image/png"
+        )
+
+    # ----------------------------
+    # ZIP 복원
+    # ----------------------------
+    uploaded_zip = st.file_uploader(
+        "📤 ZIP 업로드로 전체 복원",
+        type=["zip"]
+    )
+
+    if uploaded_zip is not None:
+        try:
+            with zipfile.ZipFile(uploaded_zip, "r") as z:
+                z.extractall(".")
+
+            backup_json_path = "exams_backup.json"
+
+            if os.path.exists(backup_json_path):
+
+                with open(
+                    backup_json_path,
+                    "r",
+                    encoding="utf-8"
+                ) as f:
+                    restored_exams = json.load(f)
+
+                save_exams(restored_exams)
+                os.remove(backup_json_path)
+
+            st.success("🔥 템플릿 + 시험정보 전체 복원 완료")
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"복원 실패: {e}")
+
     # ==================================================
     # 📚 목록 탭
     # ==================================================
@@ -387,67 +484,6 @@ def show_template_manager():
             debug_img = draw_layout(img, exam.get("layout", {}), exam)
             st.image(debug_img, channels="BGR")
 
-        # ==================================================
-        # 전체 백업 / 복원
-        # ==================================================
-        st.markdown("---")
-        st.subheader("📦 템플릿 전체 백업 / 복원")
-
-        zip_buffer = io.BytesIO()
-        exam_backup_file = create_exam_backup_file()
-
-        with zipfile.ZipFile(zip_buffer, "w") as z:
-
-            # 템플릿 이미지 전체 백업
-            for root, dirs, files in os.walk(TEMPLATE_DIR):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    z.write(
-                        file_path,
-                        arcname=os.path.join("templates", file)
-                    )
-
-            # 시험 JSON 백업
-            z.write(
-                exam_backup_file,
-                arcname="exams_backup.json"
-            )
-
-        st.download_button(
-            "📥 전체 백업 ZIP 다운로드",
-            data=zip_buffer.getvalue(),
-            file_name="omr_full_backup.zip",
-            mime="application/zip"
-        )
-
-        # ----------------------------
-        # 개별 템플릿 다운로드
-        # ----------------------------
-        st.markdown("### 📂 템플릿 선택 다운로드")
-
-        template_files = os.listdir(TEMPLATE_DIR)
-
-        if template_files:
-
-            selected_template = st.selectbox(
-                "다운로드할 템플릿 선택",
-                template_files
-            )
-
-            template_path = os.path.join(
-                TEMPLATE_DIR,
-                selected_template
-            )
-
-            with open(template_path, "rb") as f:
-                template_bytes = f.read()
-
-            st.download_button(
-                "📥 선택 템플릿 다운로드",
-                data=template_bytes,
-                file_name=selected_template,
-                mime="image/png"
-            )
 
         # ----------------------------
         # ZIP 업로드 복원
