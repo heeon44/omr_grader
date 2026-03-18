@@ -248,42 +248,45 @@ def show_exam_manager():
             answers[str(q)] = {"type": q_type, "answer": answer_value}
             scores[str(q)] = score
 
-        st.markdown("### 📊 영역 설정")
+        st.markdown("### 📂 영역 설정")
 
-        new_sections = {}
+        existing_sections = exam_data.get("sections", {})
+        default_section_count = len(existing_sections) if existing_sections else 1
 
         num_sections = st.number_input(
-            "영역 수",
-            min_value=0,
-            value=0,
-            step=1,
-            key="new_section_count"
+            "영역 개수",
+            min_value=1,
+            value=default_section_count,
+            step=1
         )
 
-        for i in range(num_sections):
+        sections = {}
 
-            col1, col2 = st.columns([2,3])
+        for i in range(1, int(num_sections) + 1):
 
-            name = col1.text_input(
-                f"영역 {i+1} 이름",
-                key=f"new_section_name_{i}"
+            default_sec = existing_sections.get(str(i), {})
+
+            sec_name = st.text_input(
+                f"{i}번 영역 이름",
+                value=default_sec.get("name", ""),
+                key=f"{exam_name}_secname_{i}"
             )
 
-            q_range = col2.text_input(
-                f"문항 범위 (예: 1-5,7,9)",
-                key=f"new_section_range_{i}"
+            default_range = ""
+            if default_sec.get("questions"):
+                default_range = ",".join(map(str, default_sec["questions"]))
+
+            sec_q = st.text_input(
+                f"{i}번 영역 문항 범위 (예: 1-5,7,9)",
+                value=default_range,
+                key=f"{exam_name}_secq_{i}"
             )
 
-            if name and q_range:
-
-                q_list = parse_question_range(q_range)
-
-                sec_id = f"sec{i+1}"
-
-                new_sections[sec_id] = {
-                    "name": name,
-                    "questions": q_list
-                }
+            sections[str(i)] = {
+                "name": sec_name,
+                "questions": parse_question_range(sec_q)
+            }
+            
         if st.button("시험 등록"):
 
             new_data = {
@@ -410,54 +413,44 @@ def show_exam_manager():
 
         st.markdown("---")
 
-        st.markdown("### 📊 영역 설정")
+        st.markdown("### 📂 영역 설정")
 
-        sections = exam_data.get("sections", {})
-        new_sections = {}
-
-        section_names = list(sections.keys())
+        existing_sections = exam_data.get("sections", {})
+        default_section_count = len(existing_sections) if existing_sections else 1
 
         num_sections = st.number_input(
-            "영역 수",
-            min_value=0,
-            value=len(section_names),
-            step=1,
-            key="edit_section_count"
+            "영역 개수",
+            min_value=1,
+            value=default_section_count,
+            step=1
         )
 
-        for i in range(num_sections):
+        sections = {}
 
-            col1, col2 = st.columns([2,3])
+        for i in range(1, int(num_sections) + 1):
 
-            default_name = section_names[i] if i < len(section_names) else ""
+            default_sec = existing_sections.get(str(i), {})
+
+            sec_name = st.text_input(
+                f"{i}번 영역 이름",
+                value=default_sec.get("name", ""),
+                key=f"{exam_name}_secname_{i}"
+            )
+
             default_range = ""
+            if default_sec.get("questions"):
+                default_range = ",".join(map(str, default_sec["questions"]))
 
-            if i < len(section_names):
-                q_list = sections[section_names[i]]
-                default_range = ",".join(map(str, q_list))
-
-            name = col1.text_input(
-                f"영역 {i+1} 이름",
-                value=default_name,
-                key=f"edit_section_name_{i}"
-            )
-
-            q_range = col2.text_input(
-                f"문항 범위 (예: 1-5,7,9)",
+            sec_q = st.text_input(
+                f"{i}번 영역 문항 범위 (예: 1-5,7,9)",
                 value=default_range,
-                key=f"edit_section_range_{i}"
+                key=f"{exam_name}_secq_{i}"
             )
 
-            if name and q_range:
-
-                q_list = parse_question_range(q_range)
-
-                sec_id = f"sec{i+1}"
-
-                new_sections[sec_id] = {
-                    "name": name,
-                    "questions": q_list
-                }
+            sections[str(i)] = {
+                "name": sec_name,
+                "questions": parse_question_range(sec_q)
+            }
                 
 
         if st.button("시험 수정 저장"):
