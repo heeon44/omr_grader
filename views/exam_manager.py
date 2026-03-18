@@ -1,32 +1,50 @@
 import streamlit as st
 import json
 import copy
+import io
+import zipfile
+import os
+
 from core.database import load_exams, add_exam, update_exam, delete_exam, save_exams
 
 
 def parse_question_range(text):
     result = []
+
     if not text:
         return result
 
     parts = text.split(",")
+
     for p in parts:
+
         p = p.strip()
+
         if "-" in p:
+
             start, end = map(int, p.split("-"))
+
             result.extend(range(start, end + 1))
+
         else:
+
             result.append(int(p))
 
     return sorted(list(set(result)))
 
 
 def generate_copy_name(base_name, exams):
+
     new_name = f"{base_name}_복사"
+
     count = 2
+
     while new_name in exams:
+
         new_name = f"{base_name}_복사{count}"
+
         count += 1
+
     return new_name
 
 
@@ -39,13 +57,17 @@ def show_exam_manager():
     tab1, tab2 = st.tabs(["📚 시험 목록", "✏ 시험 등록 / 수정"])
 
     # ==================================================
-    # 📚 시험 목록
+    # 시험 목록
     # ==================================================
+
     with tab1:
 
         if not exams:
+
             st.info("등록된 시험이 없습니다.")
+
         else:
+
             for name, exam in exams.items():
 
                 with st.expander(f"📘 {name}"):
@@ -61,43 +83,189 @@ def show_exam_manager():
 
                     col1, col2, col3, col4 = st.columns(4)
 
+                    # 수정
                     if col1.button("수정", key=f"edit_{name}"):
+
                         st.session_state["edit_exam"] = name
                         st.rerun()
 
+                    # 삭제
                     if col2.button("삭제", key=f"del_{name}"):
+
                         delete_exam(name)
                         st.rerun()
 
+                    # 복사
                     if col3.button("복사", key=f"copy_{name}"):
 
                         new_copy_name = generate_copy_name(name, exams)
+
                         copied_exam = copy.deepcopy(exam)
+
                         exams[new_copy_name] = copied_exam
+
                         save_exams(exams)
 
                         st.success(f"{new_copy_name} 생성 완료")
+
                         st.rerun()
 
+                    # 이름 변경
                     if col4.button("이름 변경", key=f"rename_btn_{name}"):
 
                         if new_name in exams and new_name != name:
+
                             st.error("이미 존재하는 시험 이름입니다.")
+
                         else:
+
                             exams[new_name] = exams.pop(name)
+
                             save_exams(exams)
+
                             st.success("이름 변경 완료")
+
                             st.rerun()
 
+        # ==================================================
+        # 시험 백업
+        # ==================================================
+
+        st.markdown("---")
+        st.subheader("📦 시험 백업")
+
+        # 전체 시험 백업
+
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, "w") as z:
+
+            exams_json = json.dumps(
+                exams,
+                ensure_ascii=False,
+                indent=2
+            ).encode("utf-8")
+
+            z.writestr(
+                "exams_backup.json",
+                exams_json
+            )
+
+        st.download_button(
+            "📥 전체 시험 ZIP 다운로드",
+            data=zip_buffer.getvalue(),
+            file_name="exam_full_backup.zip",
+            mime="application/zip"
+        )
+
+        # 선택 시험 백업
+
+        st.markdown("### 📂 선택 시험 백업")
+
+        exam_names = list(exams.keys())
+
+        if exam_names:
+
+            selected_exam = st.selectbox(
+                "백업할 시험 선택",
+                exam_names
+            )
+
+            if selected_exam:
+
+                zip_buffer = io.BytesIO()
+
+                with zipfile.ZipFile(zip_buffer, "w") as z:
+
+                    single_exam = {
+                        selected_exam: exams[selected_exam]
+                    }
+
+                    exam_json = json.dumps(
+                        single_exam,
+                        ensure_ascii=False,
+                        indent=2
+                    ).encode("utf-8")
+
+                    z.writestr(
+                        "exam_backup.json",
+                        exam_json
+                    )
+
+                st.download_button(
+                    "📥 선택 시험 ZIP 다운로드",
+                    data=zip_buffer.getvalue(),
+                    file_name=f"{selected_exam}_backup.zip",
+                    mime="application/zip"
+                )
+
+        # 시험 복원
+
+        st.markdown("### 📤 시험 ZIP 복원")
+
+        uploaded_zip = st.file_uploader(
+            "시험 백업 ZIP 업로드",
+            type=["zip"]
+        )
+
+        if uploaded_zip is not None:
+
+            try:
+
+                with zipfile.ZipFile(uploaded_zip, "r") as z:
+
+                    z.extractall(".")
+
+                if os.path.exists("exams_backup.json"):
+
+                    with open(
+                        "exams_backup.json",
+                        "r",
+                        encoding="utf-8"
+                    ) as f:
+
+                        restored_exams = json.load(f)
+
+                    save_exams(restored_exams)
+
+                    os.remove("exams_backup.json")
+
+                if os.path.exists("exam_backup.json"):
+
+                    with open(
+                        "exam_backup.json",
+                        "r",
+                        encoding="utf-8"
+                    ) as f:
+
+                        restored_exam = json.load(f)
+
+                    exams.update(restored_exam)
+
+                    save_exams(exams)
+
+                    os.remove("exam_backup.json")
+
+                st.success("시험 복원 완료")
+
+                st.rerun()
+
+            except Exception as e:
+
+                st.error(f"복원 실패: {e}")
+
     # ==================================================
-    # ✏ 시험 등록 / 수정
+    # 시험 등록 / 수정
     # ==================================================
+
     with tab2:
 
         edit_name = st.session_state.get("edit_exam")
+
         exam_data = exams.get(edit_name, {}) if edit_name else {}
 
         if edit_name:
+
             st.subheader(f"✏ 시험 수정: {edit_name}")
 
             new_exam_name = st.text_input(
@@ -106,8 +274,11 @@ def show_exam_manager():
             )
 
             exam_name = edit_name
+
         else:
+
             exam_name = st.text_input("시험 이름")
+
             new_exam_name = exam_name
 
         num_questions = st.number_input(
@@ -127,8 +298,10 @@ def show_exam_manager():
 
             if isinstance(raw_data, list):
                 default_data = {"type": "mcq", "answer": raw_data}
+
             elif isinstance(raw_data, dict):
                 default_data = raw_data
+
             else:
                 default_data = {"type": "mcq", "answer": []}
 
@@ -191,6 +364,7 @@ def show_exam_manager():
             )
 
             default_range = ""
+
             if default_sec.get("questions"):
                 default_range = ",".join(map(str, default_sec["questions"]))
 
@@ -205,9 +379,6 @@ def show_exam_manager():
                 "questions": parse_question_range(sec_q)
             }
 
-        # ==================================================
-        # 💾 저장
-        # ==================================================
         if st.button("💾 시험 저장 / 수정 완료"):
 
             new_data = {
@@ -224,90 +395,30 @@ def show_exam_manager():
                 if new_exam_name != edit_name:
 
                     if new_exam_name in exams:
+
                         st.error("이미 존재하는 시험 이름입니다.")
                         st.stop()
 
                     exams[new_exam_name] = new_data
                     del exams[edit_name]
+
                     save_exams(exams)
 
                 else:
+
                     update_exam(edit_name, new_data)
 
-                # 🔥 session_state 초기화
                 for key in list(st.session_state.keys()):
+
                     if key.startswith(f"{exam_name}_"):
+
                         del st.session_state[key]
 
                 del st.session_state["edit_exam"]
 
             else:
+
                 add_exam(new_exam_name, new_data)
 
             st.success("저장 완료")
             st.rerun()
-
-    # ==================================================
-    # 📦 백업 / 복원
-    # ==================================================
-
-    st.markdown("---")
-    st.subheader("📦 시험자료 백업 / 복원")
-
-    exams = load_exams()
-
-    # -----------------------------------
-    # 전체 시험 다운로드
-    # -----------------------------------
-    backup_json = json.dumps(exams, ensure_ascii=False, indent=2)
-
-    st.download_button(
-        label="📥 전체 시험자료 다운로드",
-        data=backup_json,
-        file_name="exam_backup.json",
-        mime="application/json"
-    )
-
-    # -----------------------------------
-    # 선택 시험 다운로드
-    # -----------------------------------
-    st.markdown("### 📂 시험 선택 다운로드")
-
-    exam_names = list(exams.keys())
-
-    if exam_names:
-
-        selected_exam = st.selectbox(
-            "다운로드할 시험 선택",
-            exam_names
-        )
-
-        if selected_exam:
-
-            single_exam = {selected_exam: exams[selected_exam]}
-
-            exam_json = json.dumps(single_exam, ensure_ascii=False, indent=2)
-
-            st.download_button(
-                label="📥 선택 시험 다운로드",
-                data=exam_json,
-                file_name=f"{selected_exam}.json",
-                mime="application/json"
-            )
-
-    # -----------------------------------
-    # 시험 복원
-    # -----------------------------------
-    uploaded_backup = st.file_uploader(
-        "📤 시험자료 JSON 업로드로 복원",
-        type=["json"]
-    )
-
-    if uploaded_backup is not None:
-        try:
-            data = json.load(uploaded_backup)
-            save_exams(data)
-            st.success("시험자료 복원 완료")
-            st.rerun()
-        except Exception as e:
-            st.error(f"복원 실패: {e}")
