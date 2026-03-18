@@ -2,9 +2,7 @@ import streamlit as st
 
 from views.exam_manager import show_exam_manager
 from views.template_manager import show_template_manager
-from views.grading_page import show_grading_page
 from views.debug_page import show_debug_page
-from views.image_debug_page import show_image_debug_page
 from views.exam_analysis_page import show_exam_analysis_page
 
 
@@ -62,7 +60,10 @@ if not login():
 # -----------------------------------
 st.title("📚 OMR 자동 채점 프로그램")
 
-# 사이드바 권한 표시 + 로그아웃
+
+# -----------------------------------
+# 사이드바 정보
+# -----------------------------------
 st.sidebar.markdown(f"### 👤 현재 권한: {st.session_state.role}")
 
 if st.sidebar.button("로그아웃"):
@@ -75,22 +76,20 @@ if st.sidebar.button("로그아웃"):
 # -----------------------------------
 if st.session_state.role == "admin":
 
-    menu = st.sidebar.selectbox(
-        "메뉴 선택",
+    menu = st.sidebar.radio(
+        "📂 메뉴",
         [
             "시험 관리",
             "템플릿 관리",
-            "채점 요약(Excel)",
             "답안 채점(PDF)",
-            "답안 채점(JPG, PNG)",
             "시험 분석"
         ]
     )
 
 elif st.session_state.role == "갈무리":
 
-    menu = st.sidebar.selectbox(
-        "메뉴 선택",
+    menu = st.sidebar.radio(
+        "📂 메뉴",
         [
             "답안 채점(PDF)",
             "시험 분석"
@@ -119,29 +118,9 @@ elif menu == "템플릿 관리":
     show_template_manager()
 
 
-elif menu == "채점 요약(Excel)":
-
-    if st.session_state.role != "admin":
-        st.error("❌ 관리자만 접근 가능합니다.")
-        st.stop()
-
-    show_grading_page()
-
-
 elif menu == "답안 채점(PDF)":
     show_debug_page()
 
 
-elif menu == "답안 채점(JPG, PNG)":
-
-    if st.session_state.role != "admin":
-        st.error("❌ 관리자만 접근 가능합니다.")
-        st.stop()
-
-    show_image_debug_page()
-
-
 elif menu == "시험 분석":
     show_exam_analysis_page()
-
-
