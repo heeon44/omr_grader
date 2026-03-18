@@ -206,49 +206,31 @@ def show_debug_page():
                 q_type = exam["answers"][str(q)].get("type", "mc")
 
                 # ===============================
-                # OMR 버블 읽기
-                # ===============================
-                expected = len(correct)
-
-                selected, _ = detect_answer(
-                    template_gray,
-                    aligned_gray,
-                    x_bounds,
-                    y1,
-                    y2,
-                    expected
-                )
-
-                # ===============================
-                # 단답식 채점
+                # 단답식 → OMR 읽지 않음
                 # ===============================
                 if q_type == "short":
 
-                    val = selected
-
-                    if isinstance(val, list):
-                        val = val[0] if val else ""
-
-                    is_correct = str(val).strip() == "1"
+                    selected = []
 
                 # ===============================
-                # 객관식 채점 (OR 지원)
+                # 객관식 → OMR 읽기
                 # ===============================
                 else:
 
-                    correct_list = []
+                    # OR 문제 안정화
+                    if any(isinstance(c, str) and "or" in c for c in correct):
+                        expected = 1
+                    else:
+                        expected = len(correct)
 
-                    for c in correct:
-
-                        if isinstance(c, str) and "or" in c:
-                            correct_list.extend([x.strip() for x in c.split("or")])
-
-                        else:
-                            correct_list.append(str(c))
-
-                    selected_list = [str(x) for x in selected]
-
-                    is_correct = set(correct_list) == set(selected_list)
+                    selected, _ = detect_answer(
+                        template_gray,
+                        aligned_gray,
+                        x_bounds,
+                        y1,
+                        y2,
+                        expected
+                    )
 
                 page_answers[q] = selected
 
