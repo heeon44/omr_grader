@@ -464,6 +464,18 @@ def show_debug_page():
     # 🔥 이미지 + 가로 5열 수정표
     # =====================================================
 
+col_img, col_edit = st.columns([3.5, 1.5], gap="small")
+
+with col_img:
+    st.image(debug_img, channels="BGR", width=850)
+
+with col_edit:
+    st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
+
+    # =====================================================
+    # 🔥 이미지 + 가로 5열 수정표
+    # =====================================================
+
     col_img, col_edit = st.columns([3.5, 1.5], gap="small")
 
     with col_img:
@@ -472,50 +484,50 @@ def show_debug_page():
     with col_edit:
         st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
 
+        # ===============================
+        # 시험에 저장된 단답형 정답 표시
+        # ===============================
+        short_questions = []
 
-    # ===============================
-    # 시험에 저장된 단답형 정답 표시
-    # ===============================
-    short_questions = []
+        for q in range(1, exam["num_questions"] + 1):
 
-    for q in range(1, exam["num_questions"] + 1):
+            q_data = exam["answers"].get(str(q), {})
+            q_type = q_data.get("type", "mc")
 
-        q_data = exam["answers"].get(str(q), {})
-        q_type = q_data.get("type", "mc")
+            if q_type == "short":
 
-        if q_type == "short":
+                correct = q_data.get("answer", "")
 
-            correct = q_data.get("answer", "")
+                if isinstance(correct, list):
+                    correct = ",".join(correct)
 
-            if isinstance(correct, list):
-                correct = ",".join(correct)
+                short_questions.append((q, correct))
 
-            short_questions.append((q, correct))
+        if short_questions:
 
-    if short_questions:
+            st.markdown("### ✏️ 단답형 정답")
 
-        st.markdown("### ✏️ 단답형 정답")
+            for row_start in range(0, len(short_questions), 5):
 
-        for row_start in range(0, len(short_questions), 5):
+                cols = st.columns(5)
 
-            cols = st.columns(5)
+                for i in range(5):
 
-            for i in range(5):
+                    idx = row_start + i
+                    if idx >= len(short_questions):
+                        continue
 
-                idx = row_start + i
-                if idx >= len(short_questions):
-                    continue
+                    q, correct = short_questions[idx]
 
-                q, correct = short_questions[idx]
+                    cols[i].text_input(
+                        f"Q{q}",
+                        value=str(correct),
+                        disabled=True,
+                        key=f"short_correct_{selected_page}_{q}"
+                    )
 
-                cols[i].text_input(
-                    f"Q{q}",
-                    value=str(correct),
-                    disabled=True,
-                    key=f"short_correct_{selected_page}_{q}"
-                )
+            st.markdown("---")
 
-        st.markdown("---")
         st.markdown("### 📝 답 수정")
 
         updated_answers = {}
