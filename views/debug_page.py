@@ -1,86 +1,16 @@
 import streamlit as st
 import cv2
 import numpy as np
-import fitz  # 🔥 PyMuPDF
+import fitz
 import pandas as pd
 import io
 
 from core.database import load_exams
 from core.omr_engine import align_images_orb, detect_answer
 
-# ===============================
-# 자동 기울기 보정
-# ===============================
-def auto_deskew(image):
-
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    edged = cv2.Canny(blur, 50, 150)
-
-    contours, _ = cv2.findContours(
-        edged,
-        cv2.RETR_EXTERNAL,
-        cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    if not contours:
-        return image
-
-    largest = max(contours, key=cv2.contourArea)
-    peri = cv2.arcLength(largest, True)
-    approx = cv2.approxPolyDP(largest, 0.02 * peri, True)
-
-    if len(approx) != 4:
-        return image
-
-    pts = approx.reshape(4, 2)
-    rect = np.zeros((4, 2), dtype="float32")
-
-    s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-
-    diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
-
-    (tl, tr, br, bl) = rect
-
-    widthA = np.linalg.norm(br - bl)
-    widthB = np.linalg.norm(tr - tl)
-    maxWidth = int(max(widthA, widthB))
-
-    heightA = np.linalg.norm(tr - br)
-    heightB = np.linalg.norm(tl - bl)
-    maxHeight = int(max(heightA, heightB))
-
-    dst = np.array([
-        [0, 0],
-        [maxWidth - 1, 0],
-        [maxWidth - 1, maxHeight - 1],
-        [0, maxHeight - 1]
-    ], dtype="float32")
-
-    M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
-
-    return warped
-
 
 # ===============================
-# 모바일 대비 강화
-# ===============================
-def enhance_mobile_image(img):
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
-    cl = clahe.apply(gray)
-    blur = cv2.GaussianBlur(cl, (5, 5), 0)
-
-    return cv2.cvtColor(blur, cv2.COLOR_GRAY2BGR)
-
-# ===============================
-# Excel 저장 함수
+# Excel 저장
 # ===============================
 def generate_answer_excel():
 
@@ -113,11 +43,36 @@ def generate_answer_excel():
 
     return output.getvalue(), exam_name
 
+
+# ===============================
+# OR 정답 판정
+# ===============================
+def check_answer(correct, selected):
+
+    if not isinstance(correct, list):
+        correct = [correct]
+
+    for c in correct:
+
+        if isinstance(c, str) and "or" in c:
+
+            options = [x.strip() for x in c.split("or")]
+
+            if any(opt in selected for opt in options):
+                return True
+
+    return set(correct) == set(selected)
+
+
+# ===============================
+# Debug Page
+# ===============================
 def show_debug_page():
 
     st.header("🔍 답안 채점")
 
     exams = load_exams()
+
     if not exams:
         st.warning("시험 먼저 등록하세요.")
         return
@@ -131,9 +86,9 @@ def show_debug_page():
 
     uploaded_pdf = st.file_uploader("PDF 업로드", type=["pdf"])
 
-    # =====================================================
-    # 🔥 채점 시작
-    # =====================================================
+    # ===============================
+    # 채점 시작
+    # ===============================
     start_grading = st.button("채점 시작")
 
     if uploaded_pdf and start_grading:
@@ -172,12 +127,10 @@ def show_debug_page():
 
         layout = exam["layout"]
 
-        # =====================================================
-        # 🔥 자동 채점
-        # =====================================================
         for idx, page_img in enumerate(pages):
 
             student_img = cv2.cvtColor(page_img, cv2.COLOR_RGB2BGR)
+
             aligned = align_images_orb(template_img, student_img, layout)
 
             if aligned is None:
@@ -221,9 +174,9 @@ def show_debug_page():
         st.success("채점 완료!")
         st.rerun()
 
-    # =====================================================
+    # ===============================
     # 채점 데이터 확인
-    # =====================================================
+    # ===============================
     if "aligned_pages" not in st.session_state:
         return
 
@@ -233,6 +186,7 @@ def show_debug_page():
         st.session_state.current_page = 0
 
     selected_page = st.session_state.current_page
+
     aligned = st.session_state.aligned_pages[selected_page]
 
     page_answers = st.session_state.answers.get(selected_page, {})
@@ -242,30 +196,13 @@ def show_debug_page():
     scores = exam.get("scores", {})
 
     debug_img = aligned.copy()
+
     total_score = 0
     section_scores = {sec_id: 0 for sec_id in sections}
 
-    # =====================================================
-    # 정답 판정 함수 (OR 지원)
-    # =====================================================
-    def check_answer(correct, selected):
-
-        if not isinstance(correct, list):
-            correct = [correct]
-
-        for c in correct:
-            if isinstance(c, str) and "or" in c:
-
-                options = [x.strip() for x in c.split("or")]
-
-                if any(opt in selected for opt in options):
-                    return True
-
-        return set(correct) == set(selected)
-
-    # =====================================================
+    # ===============================
     # 채점 루프
-    # =====================================================
+    # ===============================
     for q in range(1, exam["num_questions"] + 1):
 
         if str(q) not in layout.get("y_ranges", {}):
@@ -284,24 +221,6 @@ def show_debug_page():
         q_type = exam["answers"][str(q)].get("type", "mc")
 
         selected = page_answers.get(q, [])
-
-        # ===============================
-        # OR 정답 처리
-        # ===============================
-        def check_answer(correct, selected):
-
-            if not isinstance(correct, list):
-                correct = [correct]
-
-            for c in correct:
-
-                if isinstance(c, str) and "or" in c:
-                    options = [x.strip() for x in c.split("or")]
-
-                    if any(opt in selected for opt in options):
-                        return True
-
-            return set(correct) == set(selected)
 
         # ===============================
         # 단답식 채점
@@ -357,9 +276,19 @@ def show_debug_page():
                     section_scores[sec_id] += scores.get(str(q), 1)
 
         # ===============================
-        # 객관식 버블 표시
+        # 버블 색 표시
         # ===============================
         if q_type == "mc":
+
+            correct_bubbles = []
+
+            for c in correct:
+
+                if isinstance(c, str) and "or" in c:
+                    correct_bubbles.extend([x.strip() for x in c.split("or")])
+
+                else:
+                    correct_bubbles.append(c)
 
             for i in range(5):
 
@@ -368,10 +297,10 @@ def show_debug_page():
 
                 bubble_id = str(i + 1)
 
-                if bubble_id in correct and bubble_id in selected:
+                if bubble_id in correct_bubbles and bubble_id in selected:
                     color = (0, 255, 0)
 
-                elif bubble_id in correct:
+                elif bubble_id in correct_bubbles:
                     color = (255, 0, 0)
 
                 elif bubble_id in selected:
@@ -404,7 +333,7 @@ def show_debug_page():
                 )
 
         # ===============================
-        # 문항 번호 표시
+        # 문항 표시
         # ===============================
         qx_ranges = layout.get("question_x_ranges", {})
         qx = qx_ranges.get(col_index)
@@ -433,24 +362,22 @@ def show_debug_page():
                     2
                 )
 
-    # =====================================================
-    # 🔥 이미지 + 가로 5열 수정표
-    # =====================================================
-
+    # ===============================
+    # 이미지 + 수정 UI
+    # ===============================
     col_img, col_edit = st.columns([3.5, 1.5], gap="small")
 
     with col_img:
         st.image(debug_img, channels="BGR", width=850)
 
     with col_edit:
-        st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
 
+        st.markdown("<div style='height:600px'></div>", unsafe_allow_html=True)
         st.markdown("### 📝 답 수정")
 
         updated_answers = {}
         total_q = exam["num_questions"]
 
-        # 🔥 5개씩 가로 배열
         for row_start in range(1, total_q + 1, 5):
 
             cols = st.columns(5)
@@ -458,6 +385,7 @@ def show_debug_page():
             for i in range(5):
 
                 q = row_start + i
+
                 if q > total_q:
                     continue
 
@@ -471,6 +399,7 @@ def show_debug_page():
 
                 if new_value.strip() == "":
                     updated_answers[q] = []
+
                 else:
                     updated_answers[q] = [
                         v.strip() for v in new_value.split(",")
@@ -481,15 +410,17 @@ def show_debug_page():
             st.session_state.answers[selected_page] = updated_answers
             st.rerun()
 
-    # =====================================================
-    # 🔥 페이지 이동 버튼 (완전 양끝 정렬)
-    # =====================================================
-
+    # ===============================
+    # 페이지 이동
+    # ===============================
     nav_spacer_left, nav_left, nav_center, nav_right, nav_spacer_right = st.columns([2,1,2,1,2])
 
     with nav_left:
+
         if st.button("⬅", key=f"prev_btn_{selected_page}"):
+
             if st.session_state.current_page > 0:
+
                 st.session_state.current_page -= 1
                 st.rerun()
 
@@ -509,25 +440,29 @@ def show_debug_page():
             unsafe_allow_html=True
         )
 
-        # 페이지 입력 처리
         if page_input.isdigit():
+
             page_num = int(page_input)
 
             if 1 <= page_num <= total_pages:
+
                 if page_num - 1 != st.session_state.current_page:
+
                     st.session_state.current_page = page_num - 1
                     st.rerun()
 
     with nav_right:
+
         if st.button("➡", key=f"next_btn_{selected_page}"):
+
             if st.session_state.current_page < total_pages - 1:
+
                 st.session_state.current_page += 1
                 st.rerun()
 
-    # =====================================================
-    # 🔥 Excel 저장 버튼
-    # =====================================================
-
+    # ===============================
+    # Excel 저장
+    # ===============================
     st.markdown("---")
 
     excel_data = generate_answer_excel()
@@ -542,14 +477,16 @@ def show_debug_page():
             file_name=f"{exam_name}_answers.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-    
-    # =====================================================
-    # 🔥 점수 표시 (수정값 기준)
-    # =====================================================
+
+    # ===============================
+    # 점수 표시
+    # ===============================
     cols = st.columns(len(section_scores) + 1)
 
     i = 0
+
     for sec_id, score_val in section_scores.items():
+
         sec_name = sections[sec_id]["name"]
 
         cols[i].markdown(
@@ -557,6 +494,7 @@ def show_debug_page():
             f"<h1 style='text-align:center'>{score_val}점</h1>",
             unsafe_allow_html=True
         )
+
         i += 1
 
     cols[i].markdown(
