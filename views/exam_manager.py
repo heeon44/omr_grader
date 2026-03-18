@@ -258,22 +258,26 @@ def show_exam_manager():
 
         st.subheader("✏ 시험 수정")
 
-        exams = load_exams()   # ⭐ 여기 다시 불러오기
+        # ⭐ 시험 목록 다시 불러오기
+        exams = load_exams()
+
+        if not exams:
+
+            st.warning("등록된 시험이 없습니다.")
+            st.stop()
 
         exam_names = list(exams.keys())
 
-        if not exam_names:
-
-            st.warning("수정할 시험이 없습니다.")
-            return
-
+        # ⭐ 시험 선택
         selected_exam = st.selectbox(
             "시험 선택",
             exam_names,
-            key="exam_edit_select"
+            key="exam_edit_selectbox"
         )
 
         exam_data = exams[selected_exam]
+
+        st.markdown("---")
 
         exam_name = st.text_input(
             "시험 이름",
@@ -283,7 +287,7 @@ def show_exam_manager():
         num_questions = st.number_input(
             "문항 수",
             min_value=1,
-            value=exam_data.get("num_questions",20)
+            value=exam_data.get("num_questions", 20)
         )
 
         answers = {}
@@ -297,19 +301,19 @@ def show_exam_manager():
 
             if isinstance(raw_data, dict):
 
-                default_type = raw_data.get("type","mcq")
-                default_ans = raw_data.get("answer",[])
+                default_type = raw_data.get("type", "mcq")
+                default_ans = raw_data.get("answer", [])
 
             else:
 
                 default_type = "mcq"
                 default_ans = raw_data
 
-            col1, col2, col3 = st.columns([1,2,1])
+            col1, col2, col3 = st.columns([1, 2, 1])
 
             q_type_label = col1.selectbox(
                 f"{q}번 유형",
-                ["객관식","단답식"],
+                ["객관식", "단답식"],
                 index=0 if default_type == "mcq" else 1,
                 key=f"{selected_exam}_type_{q}"
             )
@@ -327,7 +331,7 @@ def show_exam_manager():
 
             score = col3.number_input(
                 f"{q}번 배점",
-                value=exam_data.get("scores",{}).get(str(q),1),
+                value=exam_data.get("scores", {}).get(str(q), 1),
                 key=f"{selected_exam}_score_{q}"
             )
 
@@ -338,6 +342,8 @@ def show_exam_manager():
 
             answers[str(q)] = {"type": q_type, "answer": answer_value}
             scores[str(q)] = score
+
+        st.markdown("---")
 
         if st.button("시험 수정 저장"):
 
@@ -354,7 +360,6 @@ def show_exam_manager():
 
                 exams[exam_name] = new_data
                 del exams[selected_exam]
-
                 save_exams(exams)
 
             else:
