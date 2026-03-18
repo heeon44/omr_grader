@@ -50,8 +50,6 @@ def show_exam_manager():
 
     st.header("📋 시험 관리")
 
-    exams = load_exams()
-
     tab1, tab2, tab3 = st.tabs([
         "📚 시험 목록",
         "➕ 시험 등록",
@@ -63,6 +61,8 @@ def show_exam_manager():
     # ==================================================
 
     with tab1:
+
+        exams = load_exams()
 
         if not exams:
 
@@ -88,7 +88,6 @@ def show_exam_manager():
                     if col1.button("삭제", key=f"del_{name}"):
 
                         delete_exam(name)
-
                         st.rerun()
 
                     if col2.button("복사", key=f"copy_{name}"):
@@ -100,7 +99,6 @@ def show_exam_manager():
                         save_exams(exams)
 
                         st.success("복사 완료")
-
                         st.rerun()
 
                     if col3.button("이름 변경", key=f"rename_btn_{name}"):
@@ -112,11 +110,9 @@ def show_exam_manager():
                         else:
 
                             exams[new_name] = exams.pop(name)
-
                             save_exams(exams)
 
                             st.success("이름 변경 완료")
-
                             st.rerun()
 
         st.markdown("---")
@@ -180,7 +176,6 @@ def show_exam_manager():
                 save_exams(exams)
 
                 st.success("시험자료 복원 완료")
-
                 st.rerun()
 
             except Exception as e:
@@ -253,7 +248,6 @@ def show_exam_manager():
             add_exam(exam_name, new_data)
 
             st.success("시험 등록 완료")
-
             st.rerun()
 
     # ==================================================
@@ -264,17 +258,19 @@ def show_exam_manager():
 
         st.subheader("✏ 시험 수정")
 
+        exams = load_exams()   # ⭐ 여기 다시 불러오기
+
         exam_names = list(exams.keys())
 
         if not exam_names:
 
             st.warning("수정할 시험이 없습니다.")
-
             return
 
         selected_exam = st.selectbox(
             "시험 선택",
-            exam_names
+            exam_names,
+            key="exam_edit_select"
         )
 
         exam_data = exams[selected_exam]
@@ -302,13 +298,11 @@ def show_exam_manager():
             if isinstance(raw_data, dict):
 
                 default_type = raw_data.get("type","mcq")
-
                 default_ans = raw_data.get("answer",[])
 
             else:
 
                 default_type = "mcq"
-
                 default_ans = raw_data
 
             col1, col2, col3 = st.columns([1,2,1])
@@ -359,7 +353,6 @@ def show_exam_manager():
             if exam_name != selected_exam:
 
                 exams[exam_name] = new_data
-
                 del exams[selected_exam]
 
                 save_exams(exams)
@@ -369,5 +362,4 @@ def show_exam_manager():
                 update_exam(selected_exam, new_data)
 
             st.success("수정 완료")
-
             st.rerun()
