@@ -286,6 +286,24 @@ def show_debug_page():
         selected = page_answers.get(q, [])
 
         # ===============================
+        # OR 정답 처리
+        # ===============================
+        def check_answer(correct, selected):
+
+            if not isinstance(correct, list):
+                correct = [correct]
+
+            for c in correct:
+
+                if isinstance(c, str) and "or" in c:
+                    options = [x.strip() for x in c.split("or")]
+
+                    if any(opt in selected for opt in options):
+                        return True
+
+            return set(correct) == set(selected)
+
+        # ===============================
         # 단답식 채점
         # ===============================
         if q_type == "short":
@@ -302,7 +320,7 @@ def show_debug_page():
             is_correct = check_answer(correct, selected)
 
         # ===============================
-        # 오답 표시
+        # 오답 빨간 표시
         # ===============================
         if not is_correct:
 
@@ -386,7 +404,7 @@ def show_debug_page():
                 )
 
         # ===============================
-        # 문항 표시
+        # 문항 번호 표시
         # ===============================
         qx_ranges = layout.get("question_x_ranges", {})
         qx = qx_ranges.get(col_index)
