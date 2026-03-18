@@ -494,24 +494,14 @@ def show_debug_page():
 
             st.markdown("### ✏️ 단답형 정답")
 
-            for row_start in range(0, len(short_questions), 5):
+            for q, correct in short_questions:
 
-                cols = st.columns(5)
-
-                for i in range(5):
-
-                    idx = row_start + i
-                    if idx >= len(short_questions):
-                        continue
-
-                    q, correct = short_questions[idx]
-
-                    cols[i].text_input(
-                        f"Q{q}",
-                        value=str(correct),
-                        disabled=True,
-                        key=f"short_correct_{selected_page}_{q}"
-                    )
+                st.text_input(
+                    f"Q{q}",
+                    value=str(correct),
+                    disabled=True,
+                    key=f"short_correct_{selected_page}_{q}"
+                )
 
             st.markdown("---")
 
