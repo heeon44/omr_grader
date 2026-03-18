@@ -278,3 +278,25 @@ def show_exam_manager():
             st.rerun()
         except Exception as e:
             st.error(f"복원 실패: {e}")
+
+st.markdown("### 📂 시험 선택 다운로드")
+
+exam_names = list(exams.keys())
+
+selected_exam = st.selectbox(
+    "다운로드할 시험 선택",
+    exam_names
+)
+
+if selected_exam:
+
+    single_exam = {selected_exam: exams[selected_exam]}
+
+    exam_json = json.dumps(single_exam, ensure_ascii=False, indent=2)
+
+    st.download_button(
+        label="📥 선택 시험 다운로드",
+        data=exam_json,
+        file_name=f"{selected_exam}.json",
+        mime="application/json"
+    )
