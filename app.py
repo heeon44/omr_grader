@@ -5,9 +5,6 @@ from views.template_manager import show_template_manager
 from views.debug_page import show_debug_page
 from views.exam_analysis_page import show_exam_analysis_page
 
-# ✅ 추가
-from views.mock_scan_page import show_mock_scan_page
-
 
 # -----------------------------------
 # 🔐 페이지 기본 설정 (최상단 1번만!)
@@ -85,7 +82,6 @@ if st.session_state.role == "admin":
             "시험 관리",
             "템플릿 관리",
             "답안 채점(PDF)",
-            "모의 판독",   # ✅ 추가
             "시험 분석"
         ]
     )
@@ -96,7 +92,6 @@ elif st.session_state.role == "갈무리":
         "📂 메뉴",
         [
             "답안 채점(PDF)",
-            "모의 판독",   # ✅ 사용자도 사용 가능하게 추가 (원하면 제거 가능)
             "시험 분석"
         ]
     )
@@ -127,10 +122,6 @@ elif menu == "답안 채점(PDF)":
     show_debug_page()
 
 
-# ✅ 추가된 부분
-elif menu == "모의 판독":
-    show_mock_scan_page()
-
-
 elif menu == "시험 분석":
     show_exam_analysis_page()
+
